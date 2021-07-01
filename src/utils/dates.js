@@ -17,7 +17,7 @@ export {
   minutes,
   month,
   seconds,
-  startOf
+  startOf,
 } from './date-arithmetic'
 
 const MILLI = {
