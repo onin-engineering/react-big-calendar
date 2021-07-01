@@ -708,7 +708,9 @@
     return (
       !!length &&
       (type == 'number' || (type != 'symbol' && reIsUint.test(value))) &&
-      value > -1 && value % 1 == 0 && value < length
+      value > -1 &&
+      value % 1 == 0 &&
+      value < length
     )
   }
 
@@ -2443,7 +2445,8 @@
       // Non `Object` object instances with different constructors are not equal.
       if (
         objCtor != othCtor &&
-        'constructor' in object && 'constructor' in other &&
+        'constructor' in object &&
+        'constructor' in other &&
         !(
           typeof objCtor == 'function' &&
           objCtor instanceof objCtor &&
@@ -6518,6 +6521,304 @@
     return self
   }
 
+  function toInteger(dirtyNumber) {
+    if (dirtyNumber === null || dirtyNumber === true || dirtyNumber === false) {
+      return NaN
+    }
+
+    var number = Number(dirtyNumber)
+
+    if (isNaN(number)) {
+      return number
+    }
+
+    return number < 0 ? Math.ceil(number) : Math.floor(number)
+  }
+
+  function requiredArgs(required, args) {
+    if (args.length < required) {
+      throw new TypeError(
+        required +
+          ' argument' +
+          (required > 1 ? 's' : '') +
+          ' required, but only ' +
+          args.length +
+          ' present'
+      )
+    }
+  }
+
+  /**
+   * @name toDate
+   * @category Common Helpers
+   * @summary Convert the given argument to an instance of Date.
+   *
+   * @description
+   * Convert the given argument to an instance of Date.
+   *
+   * If the argument is an instance of Date, the function returns its clone.
+   *
+   * If the argument is a number, it is treated as a timestamp.
+   *
+   * If the argument is none of the above, the function returns Invalid Date.
+   *
+   * **Note**: *all* Date arguments passed to any *date-fns* function is processed by `toDate`.
+   *
+   * @param {Date|Number} argument - the value to convert
+   * @returns {Date} the parsed date in the local time zone
+   * @throws {TypeError} 1 argument required
+   *
+   * @example
+   * // Clone the date:
+   * const result = toDate(new Date(2014, 1, 11, 11, 30, 30))
+   * //=> Tue Feb 11 2014 11:30:30
+   *
+   * @example
+   * // Convert the timestamp to date:
+   * const result = toDate(1392098430000)
+   * //=> Tue Feb 11 2014 11:30:30
+   */
+
+  function toDate(argument) {
+    requiredArgs(1, arguments)
+    var argStr = Object.prototype.toString.call(argument) // Clone the date
+
+    if (
+      argument instanceof Date ||
+      (typeof argument === 'object' && argStr === '[object Date]')
+    ) {
+      // Prevent the date to lose the milliseconds when passed to new Date() in IE10
+      return new Date(argument.getTime())
+    } else if (typeof argument === 'number' || argStr === '[object Number]') {
+      return new Date(argument)
+    } else {
+      if (
+        (typeof argument === 'string' || argStr === '[object String]') &&
+        typeof console !== 'undefined'
+      ) {
+        // eslint-disable-next-line no-console
+        console.warn(
+          "Starting with v2.0.0-beta.1 date-fns doesn't accept strings as date arguments. Please use `parseISO` to parse strings. See: https://git.io/fjule"
+        ) // eslint-disable-next-line no-console
+
+        console.warn(new Error().stack)
+      }
+
+      return new Date(NaN)
+    }
+  }
+
+  /**
+   * @name startOfWeek
+   * @category Week Helpers
+   * @summary Return the start of a week for the given date.
+   *
+   * @description
+   * Return the start of a week for the given date.
+   * The result will be in the local timezone.
+   *
+   * ### v2.0.0 breaking changes:
+   *
+   * - [Changes that are common for the whole library](https://github.com/date-fns/date-fns/blob/master/docs/upgradeGuide.md#Common-Changes).
+   *
+   * @param {Date|Number} date - the original date
+   * @param {Object} [options] - an object with options.
+   * @param {Locale} [options.locale=defaultLocale] - the locale object. See [Locale]{@link https://date-fns.org/docs/Locale}
+   * @param {0|1|2|3|4|5|6} [options.weekStartsOn=0] - the index of the first day of the week (0 - Sunday)
+   * @returns {Date} the start of a week
+   * @throws {TypeError} 1 argument required
+   * @throws {RangeError} `options.weekStartsOn` must be between 0 and 6
+   *
+   * @example
+   * // The start of a week for 2 September 2014 11:55:00:
+   * const result = startOfWeek(new Date(2014, 8, 2, 11, 55, 0))
+   * //=> Sun Aug 31 2014 00:00:00
+   *
+   * @example
+   * // If the week starts on Monday, the start of the week for 2 September 2014 11:55:00:
+   * const result = startOfWeek(new Date(2014, 8, 2, 11, 55, 0), { weekStartsOn: 1 })
+   * //=> Mon Sep 01 2014 00:00:00
+   */
+
+  function startOfWeek(dirtyDate, dirtyOptions) {
+    requiredArgs(1, arguments)
+    var options = dirtyOptions || {}
+    var locale = options.locale
+    var localeWeekStartsOn =
+      locale && locale.options && locale.options.weekStartsOn
+    var defaultWeekStartsOn =
+      localeWeekStartsOn == null ? 0 : toInteger(localeWeekStartsOn)
+    var weekStartsOn =
+      options.weekStartsOn == null
+        ? defaultWeekStartsOn
+        : toInteger(options.weekStartsOn) // Test if weekStartsOn is between 0 and 6 _and_ is not NaN
+
+    if (!(weekStartsOn >= 0 && weekStartsOn <= 6)) {
+      throw new RangeError('weekStartsOn must be between 0 and 6 inclusively')
+    }
+
+    var date = toDate(dirtyDate)
+    var day = date.getDay()
+    var diff = (day < weekStartsOn ? 7 : 0) + day - weekStartsOn
+    date.setDate(date.getDate() - diff)
+    date.setHours(0, 0, 0, 0)
+    return date
+  }
+
+  /**
+   * @name startOfDay
+   * @category Day Helpers
+   * @summary Return the start of a day for the given date.
+   *
+   * @description
+   * Return the start of a day for the given date.
+   * The result will be in the local timezone.
+   *
+   * ### v2.0.0 breaking changes:
+   *
+   * - [Changes that are common for the whole library](https://github.com/date-fns/date-fns/blob/master/docs/upgradeGuide.md#Common-Changes).
+   *
+   * @param {Date|Number} date - the original date
+   * @returns {Date} the start of a day
+   * @throws {TypeError} 1 argument required
+   *
+   * @example
+   * // The start of a day for 2 September 2014 11:55:00:
+   * const result = startOfDay(new Date(2014, 8, 2, 11, 55, 0))
+   * //=> Tue Sep 02 2014 00:00:00
+   */
+
+  function startOfDay(dirtyDate) {
+    requiredArgs(1, arguments)
+    var date = toDate(dirtyDate)
+    date.setHours(0, 0, 0, 0)
+    return date
+  }
+
+  /**
+   * @name startOfMinute
+   * @category Minute Helpers
+   * @summary Return the start of a minute for the given date.
+   *
+   * @description
+   * Return the start of a minute for the given date.
+   * The result will be in the local timezone.
+   *
+   * ### v2.0.0 breaking changes:
+   *
+   * - [Changes that are common for the whole library](https://github.com/date-fns/date-fns/blob/master/docs/upgradeGuide.md#Common-Changes).
+   *
+   * @param {Date|Number} date - the original date
+   * @returns {Date} the start of a minute
+   * @throws {TypeError} 1 argument required
+   *
+   * @example
+   * // The start of a minute for 1 December 2014 22:15:45.400:
+   * const result = startOfMinute(new Date(2014, 11, 1, 22, 15, 45, 400))
+   * //=> Mon Dec 01 2014 22:15:00
+   */
+
+  function startOfMinute(dirtyDate) {
+    requiredArgs(1, arguments)
+    var date = toDate(dirtyDate)
+    date.setSeconds(0, 0)
+    return date
+  }
+
+  /**
+   * @name startOfMonth
+   * @category Month Helpers
+   * @summary Return the start of a month for the given date.
+   *
+   * @description
+   * Return the start of a month for the given date.
+   * The result will be in the local timezone.
+   *
+   * ### v2.0.0 breaking changes:
+   *
+   * - [Changes that are common for the whole library](https://github.com/date-fns/date-fns/blob/master/docs/upgradeGuide.md#Common-Changes).
+   *
+   * @param {Date|Number} date - the original date
+   * @returns {Date} the start of a month
+   * @throws {TypeError} 1 argument required
+   *
+   * @example
+   * // The start of a month for 2 September 2014 11:55:00:
+   * const result = startOfMonth(new Date(2014, 8, 2, 11, 55, 0))
+   * //=> Mon Sep 01 2014 00:00:00
+   */
+
+  function startOfMonth(dirtyDate) {
+    requiredArgs(1, arguments)
+    var date = toDate(dirtyDate)
+    date.setDate(1)
+    date.setHours(0, 0, 0, 0)
+    return date
+  }
+
+  /**
+   * @name startOfYear
+   * @category Year Helpers
+   * @summary Return the start of a year for the given date.
+   *
+   * @description
+   * Return the start of a year for the given date.
+   * The result will be in the local timezone.
+   *
+   * ### v2.0.0 breaking changes:
+   *
+   * - [Changes that are common for the whole library](https://github.com/date-fns/date-fns/blob/master/docs/upgradeGuide.md#Common-Changes).
+   *
+   * @param {Date|Number} date - the original date
+   * @returns {Date} the start of a year
+   * @throws {TypeError} 1 argument required
+   *
+   * @example
+   * // The start of a year for 2 September 2014 11:55:00:
+   * const result = startOfYear(new Date(2014, 8, 2, 11, 55, 00))
+   * //=> Wed Jan 01 2014 00:00:00
+   */
+
+  function startOfYear(dirtyDate) {
+    requiredArgs(1, arguments)
+    var cleanDate = toDate(dirtyDate)
+    var date = new Date(0)
+    date.setFullYear(cleanDate.getFullYear(), 0, 1)
+    date.setHours(0, 0, 0, 0)
+    return date
+  }
+
+  /**
+   * @name startOfSecond
+   * @category Second Helpers
+   * @summary Return the start of a second for the given date.
+   *
+   * @description
+   * Return the start of a second for the given date.
+   * The result will be in the local timezone.
+   *
+   * ### v2.0.0 breaking changes:
+   *
+   * - [Changes that are common for the whole library](https://github.com/date-fns/date-fns/blob/master/docs/upgradeGuide.md#Common-Changes).
+   *
+   * @param {Date|Number} date - the original date
+   * @returns {Date} the start of a second
+   * @throws {TypeError} 1 argument required
+   *
+   * @example
+   * // The start of a second for 1 December 2014 22:15:45.400:
+   * const result = startOfSecond(new Date(2014, 11, 1, 22, 15, 45, 400))
+   * //=> Mon Dec 01 2014 22:15:45.000
+   */
+
+  function startOfSecond(dirtyDate) {
+    requiredArgs(1, arguments)
+    var date = toDate(dirtyDate)
+    date.setMilliseconds(0)
+    return date
+  }
+
+  var _startOfs
   var MILI = 'milliseconds',
     SECONDS = 'seconds',
     MINUTES = 'minutes',
@@ -6528,7 +6829,6 @@
     YEAR = 'year',
     DECADE = 'decade',
     CENTURY = 'century'
-
   var multiplierMilli = {
     milliseconds: 1,
     seconds: 1000,
@@ -6537,7 +6837,6 @@
     day: 24 * 60 * 60 * 1000,
     week: 7 * 24 * 60 * 60 * 1000,
   }
-
   var multiplierMonth = {
     month: 1,
     year: 12,
@@ -6564,6 +6863,7 @@
       case DAY:
       case WEEK:
         return addMillis(d, num * multiplierMilli[unit])
+
       case MONTH:
       case YEAR:
       case DECADE:
@@ -6576,7 +6876,6 @@
 
   function addMillis(d, num) {
     var nextDate = new Date(+d + num)
-
     return solveDST(d, nextDate)
   }
 
@@ -6588,68 +6887,61 @@
       nextYear = Math.trunc(totalMonths / 12),
       nextMonth = totalMonths % 12,
       nextDay = Math.min(day, daysOf(nextYear)[nextMonth])
-
     var nextDate = new Date(d)
-    nextDate.setFullYear(nextYear)
-
-    // To avoid a bug when sets the Feb month
+    nextDate.setFullYear(nextYear) // To avoid a bug when sets the Feb month
     // with a date > 28 or date > 29 (leap year)
-    nextDate.setDate(1)
 
+    nextDate.setDate(1)
     nextDate.setMonth(nextMonth)
     nextDate.setDate(nextDay)
-
     return nextDate
   }
 
   function solveDST(currentDate, nextDate) {
     var currentOffset = currentDate.getTimezoneOffset(),
-      nextOffset = nextDate.getTimezoneOffset()
-
-    // if is DST, add the difference in minutes
+      nextOffset = nextDate.getTimezoneOffset() // if is DST, add the difference in minutes
     // else the difference is zero
-    var diffMinutes = nextOffset - currentOffset
 
+    var diffMinutes = nextOffset - currentOffset
     return new Date(+nextDate + diffMinutes * multiplierMilli['minutes'])
   }
 
   function subtract(d, num, unit) {
     return add(d, -num, unit)
   }
-
+  var startOfs =
+    ((_startOfs = {}),
+    (_startOfs[CENTURY] = function(d) {
+      d = startOfMonth(d)
+      return subtract(d, year(d) % 100, 'year')
+    }),
+    (_startOfs[DECADE] = function(d) {
+      d = startOfMonth(d)
+      return subtract(d, year(d) % 10, 'year')
+    }),
+    (_startOfs[YEAR] = startOfYear),
+    (_startOfs[WEEK] = startOfWeek),
+    (_startOfs[DAY] = startOfDay),
+    (_startOfs[MONTH] = startOfMonth),
+    (_startOfs[MINUTES] = startOfMinute),
+    (_startOfs[SECONDS] = startOfSecond),
+    _startOfs)
   function startOf(d, unit, firstOfWeek) {
-    d = new Date(d)
+    if (!unit) return d
+    var fn = startOfs[unit]
 
-    switch (unit) {
-      case CENTURY:
-      case DECADE:
-      case YEAR:
-        d = month(d, 0)
-      case MONTH:
-        d = date(d, 1)
-      case WEEK:
-      case DAY:
-        d = hours(d, 0)
-      case HOURS:
-        d = minutes(d, 0)
-      case MINUTES:
-        d = seconds(d, 0)
-      case SECONDS:
-        d = milliseconds(d, 0)
+    if (!fn) {
+      console.log('fn not found', unit) // eslint-disable-line
+
+      return d
     }
 
-    if (unit === DECADE) d = subtract(d, year(d) % 10, 'year')
-
-    if (unit === CENTURY) d = subtract(d, year(d) % 100, 'year')
-
-    if (unit === WEEK) d = weekday(d, 0, firstOfWeek)
-
-    return d
+    return fn(d, firstOfWeek)
   }
-
   function endOf(d, unit, firstOfWeek) {
     d = new Date(d)
     d = startOf(d, unit, firstOfWeek)
+
     switch (unit) {
       case CENTURY:
       case DECADE:
@@ -6660,18 +6952,20 @@
         d = subtract(d, 1, DAY)
         d.setHours(23, 59, 59, 999)
         break
+
       case DAY:
         d.setHours(23, 59, 59, 999)
         break
+
       case HOURS:
       case MINUTES:
       case SECONDS:
         d = add(d, 1, unit)
         d = subtract(d, 1, MILI)
     }
+
     return d
   }
-
   var eq$1 = createComparer(function(a, b) {
     return a === b
   })
@@ -6687,47 +6981,38 @@
   var lte = createComparer(function(a, b) {
     return a <= b
   })
-
   function min() {
     return new Date(Math.min.apply(Math, arguments))
   }
-
   function max() {
     return new Date(Math.max.apply(Math, arguments))
   }
-
   function inRange(day, min, max, unit) {
     unit = unit || 'day'
-
     return (!min || gte(day, min, unit)) && (!max || lte(day, max, unit))
   }
-
   var milliseconds = createAccessor('Milliseconds')
   var seconds = createAccessor('Seconds')
   var minutes = createAccessor('Minutes')
   var hours = createAccessor('Hours')
-  var day = createAccessor('Day')
-  var date = createAccessor('Date')
   var month = createAccessor('Month')
   var year = createAccessor('FullYear')
-
-  function weekday(d, val, firstDay) {
-    var w = (day(d) + 7 - (firstDay || 0)) % 7
-
-    return val === undefined ? w : add(d, val - w, DAY)
-  }
 
   function createAccessor(method) {
     var hourLength = (function(method) {
       switch (method) {
         case 'Milliseconds':
           return 3600000
+
         case 'Seconds':
           return 3600
+
         case 'Minutes':
           return 60
+
         case 'Hours':
           return 1
+
         default:
           return null
       }
@@ -6735,7 +7020,6 @@
 
     return function(d, val) {
       if (val === undefined) return d['get' + method]()
-
       var dateOut = new Date(d)
       dateOut['set' + method](val)
 
@@ -6997,7 +7281,7 @@
    * _.toInteger('3.2');
    * // => 3
    */
-  function toInteger(value) {
+  function toInteger$1(value) {
     var result = toFinite(value),
       remainder = result % 1
 
@@ -7033,7 +7317,7 @@
     if (guard ? isIterateeCall(array, size, guard) : size === undefined) {
       size = 1
     } else {
-      size = nativeMax$1(toInteger(size), 0)
+      size = nativeMax$1(toInteger$1(size), 0)
     }
     var length = array == null ? 0 : array.length
     if (!length || size < 1) {
@@ -10147,14 +10431,12 @@
     var popperInstanceRef = React.useRef()
     var update = React.useCallback(function() {
       var _popperInstanceRef$cu
-
       ;(_popperInstanceRef$cu = popperInstanceRef.current) == null
         ? void 0
         : _popperInstanceRef$cu.update()
     }, [])
     var forceUpdate = React.useCallback(function() {
       var _popperInstanceRef$cu2
-
       ;(_popperInstanceRef$cu2 = popperInstanceRef.current) == null
         ? void 0
         : _popperInstanceRef$cu2.forceUpdate()
@@ -12031,7 +12313,7 @@
     if (!length) {
       return -1
     }
-    var index = fromIndex == null ? 0 : toInteger(fromIndex)
+    var index = fromIndex == null ? 0 : toInteger$1(fromIndex)
     if (index < 0) {
       index = nativeMax$2(length + index, 0)
     }

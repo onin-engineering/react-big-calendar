@@ -13,23 +13,13 @@ import invariant from 'invariant'
 import _assertThisInitialized from '@babel/runtime/helpers/esm/assertThisInitialized'
 import { findDOMNode } from 'react-dom'
 import {
-  eq,
-  add,
-  startOf,
-  endOf,
-  lte,
-  hours,
-  minutes,
-  seconds,
-  milliseconds,
-  lt,
-  gte,
-  month,
-  max,
-  min,
-  gt,
-  inRange as inRange$1,
-} from 'date-arithmetic'
+  startOfMonth,
+  startOfYear,
+  startOfWeek,
+  startOfDay,
+  startOfMinute,
+  startOfSecond,
+} from 'date-fns'
 import chunk from 'lodash-es/chunk'
 import getPosition from 'dom-helpers/position'
 import { request } from 'dom-helpers/animationFrame'
@@ -307,6 +297,232 @@ var defaultMessages = {
 }
 function messages(msgs) {
   return _extends({}, defaultMessages, msgs)
+}
+
+var _startOfs
+var MILI = 'milliseconds',
+  SECONDS = 'seconds',
+  MINUTES = 'minutes',
+  HOURS = 'hours',
+  DAY = 'day',
+  WEEK = 'week',
+  MONTH = 'month',
+  YEAR = 'year',
+  DECADE = 'decade',
+  CENTURY = 'century'
+var multiplierMilli = {
+  milliseconds: 1,
+  seconds: 1000,
+  minutes: 60 * 1000,
+  hours: 60 * 60 * 1000,
+  day: 24 * 60 * 60 * 1000,
+  week: 7 * 24 * 60 * 60 * 1000,
+}
+var multiplierMonth = {
+  month: 1,
+  year: 12,
+  decade: 10 * 12,
+  century: 100 * 12,
+}
+
+function daysOf(year) {
+  return [31, daysInFeb(year), 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+}
+
+function daysInFeb(year) {
+  return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0 ? 29 : 28
+}
+
+function add(d, num, unit) {
+  d = new Date(d)
+
+  switch (unit) {
+    case MILI:
+    case SECONDS:
+    case MINUTES:
+    case HOURS:
+    case DAY:
+    case WEEK:
+      return addMillis(d, num * multiplierMilli[unit])
+
+    case MONTH:
+    case YEAR:
+    case DECADE:
+    case CENTURY:
+      return addMonths(d, num * multiplierMonth[unit])
+  }
+
+  throw new TypeError('Invalid units: "' + unit + '"')
+}
+
+function addMillis(d, num) {
+  var nextDate = new Date(+d + num)
+  return solveDST(d, nextDate)
+}
+
+function addMonths(d, num) {
+  var year = d.getFullYear(),
+    month = d.getMonth(),
+    day = d.getDate(),
+    totalMonths = year * 12 + month + num,
+    nextYear = Math.trunc(totalMonths / 12),
+    nextMonth = totalMonths % 12,
+    nextDay = Math.min(day, daysOf(nextYear)[nextMonth])
+  var nextDate = new Date(d)
+  nextDate.setFullYear(nextYear) // To avoid a bug when sets the Feb month
+  // with a date > 28 or date > 29 (leap year)
+
+  nextDate.setDate(1)
+  nextDate.setMonth(nextMonth)
+  nextDate.setDate(nextDay)
+  return nextDate
+}
+
+function solveDST(currentDate, nextDate) {
+  var currentOffset = currentDate.getTimezoneOffset(),
+    nextOffset = nextDate.getTimezoneOffset() // if is DST, add the difference in minutes
+  // else the difference is zero
+
+  var diffMinutes = nextOffset - currentOffset
+  return new Date(+nextDate + diffMinutes * multiplierMilli['minutes'])
+}
+
+function subtract(d, num, unit) {
+  return add(d, -num, unit)
+}
+var startOfs =
+  ((_startOfs = {}),
+  (_startOfs[CENTURY] = function(d) {
+    d = startOfMonth(d)
+    return subtract(d, year(d) % 100, 'year')
+  }),
+  (_startOfs[DECADE] = function(d) {
+    d = startOfMonth(d)
+    return subtract(d, year(d) % 10, 'year')
+  }),
+  (_startOfs[YEAR] = startOfYear),
+  (_startOfs[WEEK] = startOfWeek),
+  (_startOfs[DAY] = startOfDay),
+  (_startOfs[MONTH] = startOfMonth),
+  (_startOfs[MINUTES] = startOfMinute),
+  (_startOfs[SECONDS] = startOfSecond),
+  _startOfs)
+function startOf(d, unit, firstOfWeek) {
+  if (!unit) return d
+  var fn = startOfs[unit]
+
+  if (!fn) {
+    console.log('fn not found', unit) // eslint-disable-line
+
+    return d
+  }
+
+  return fn(d, firstOfWeek)
+}
+function endOf(d, unit, firstOfWeek) {
+  d = new Date(d)
+  d = startOf(d, unit, firstOfWeek)
+
+  switch (unit) {
+    case CENTURY:
+    case DECADE:
+    case YEAR:
+    case MONTH:
+    case WEEK:
+      d = add(d, 1, unit)
+      d = subtract(d, 1, DAY)
+      d.setHours(23, 59, 59, 999)
+      break
+
+    case DAY:
+      d.setHours(23, 59, 59, 999)
+      break
+
+    case HOURS:
+    case MINUTES:
+    case SECONDS:
+      d = add(d, 1, unit)
+      d = subtract(d, 1, MILI)
+  }
+
+  return d
+}
+var eq = createComparer(function(a, b) {
+  return a === b
+})
+var gt = createComparer(function(a, b) {
+  return a > b
+})
+var gte = createComparer(function(a, b) {
+  return a >= b
+})
+var lt = createComparer(function(a, b) {
+  return a < b
+})
+var lte = createComparer(function(a, b) {
+  return a <= b
+})
+function min() {
+  return new Date(Math.min.apply(Math, arguments))
+}
+function max() {
+  return new Date(Math.max.apply(Math, arguments))
+}
+function inRange(day, min, max, unit) {
+  unit = unit || 'day'
+  return (!min || gte(day, min, unit)) && (!max || lte(day, max, unit))
+}
+var milliseconds = createAccessor('Milliseconds')
+var seconds = createAccessor('Seconds')
+var minutes = createAccessor('Minutes')
+var hours = createAccessor('Hours')
+var month = createAccessor('Month')
+var year = createAccessor('FullYear')
+
+function createAccessor(method) {
+  var hourLength = (function(method) {
+    switch (method) {
+      case 'Milliseconds':
+        return 3600000
+
+      case 'Seconds':
+        return 3600
+
+      case 'Minutes':
+        return 60
+
+      case 'Hours':
+        return 1
+
+      default:
+        return null
+    }
+  })(method)
+
+  return function(d, val) {
+    if (val === undefined) return d['get' + method]()
+    var dateOut = new Date(d)
+    dateOut['set' + method](val)
+
+    if (
+      hourLength &&
+      dateOut['get' + method]() != val &&
+      (method === 'Hours' ||
+        (val >= hourLength &&
+          dateOut.getHours() - d.getHours() < Math.floor(val / hourLength)))
+    ) {
+      //Skip DST hour, if it occurs
+      dateOut['set' + method](val + hourLength)
+    }
+
+    return dateOut
+  }
+}
+
+function createComparer(operator) {
+  return function(a, b, unit) {
+    return operator(+startOf(a, unit), +startOf(b, unit))
+  }
 }
 
 /* eslint no-fallthrough: off */
@@ -1738,7 +1954,7 @@ function eventLevels(rowSegments, limit) {
     extra: extra,
   }
 }
-function inRange(e, start, end, accessors) {
+function inRange$1(e, start, end, accessors) {
   var eStart = startOf(accessors.start(e), 'day')
   var eEnd = accessors.end(e)
   var startsBeforeEnd = lte(eStart, end, 'day') // when the event is zero duration we need to handle a bit differently
@@ -2354,7 +2570,7 @@ var _excluded$1 = ['date', 'className']
 
 var eventsForWeek = function eventsForWeek(evts, start, end, accessors) {
   return evts.filter(function(e) {
-    return inRange(e, start, end, accessors)
+    return inRange$1(e, start, end, accessors)
   })
 }
 
@@ -3499,7 +3715,7 @@ function getSlotMetrics$1(_ref) {
     },
     dateIsInGroup: function dateIsInGroup(date, groupIndex) {
       var nextGroup = groups[groupIndex + 1]
-      return inRange$1(
+      return inRange(
         date,
         groups[groupIndex][0],
         nextGroup ? nextGroup[0] : end,
@@ -4640,7 +4856,7 @@ var TimeGrid = /*#__PURE__*/ (function(_Component) {
         resource = _ref[1]
       return range.map(function(date, jj) {
         var daysEvents = (groupedEvents.get(id) || []).filter(function(event) {
-          return inRange$1(
+          return inRange(
             date,
             accessors.start(event),
             accessors.end(event),
@@ -4650,7 +4866,7 @@ var TimeGrid = /*#__PURE__*/ (function(_Component) {
         var daysBackgroundEvents = (
           groupedBackgroundEvents.get(id) || []
         ).filter(function(event) {
-          return inRange$1(
+          return inRange(
             date,
             accessors.start(event),
             accessors.end(event),
@@ -4703,7 +4919,7 @@ var TimeGrid = /*#__PURE__*/ (function(_Component) {
       rangeEvents = [],
       rangeBackgroundEvents = []
     events.forEach(function(event) {
-      if (inRange(event, start, end, accessors)) {
+      if (inRange$1(event, start, end, accessors)) {
         var eStart = accessors.start(event),
           eEnd = accessors.end(event)
 
@@ -4719,7 +4935,7 @@ var TimeGrid = /*#__PURE__*/ (function(_Component) {
       }
     })
     backgroundEvents.forEach(function(event) {
-      if (inRange(event, start, end, accessors)) {
+      if (inRange$1(event, start, end, accessors)) {
         rangeBackgroundEvents.push(event)
       }
     })
@@ -5074,7 +5290,7 @@ function Agenda(_ref) {
     var Event = components.event,
       AgendaDate = components.date
     events = events.filter(function(e) {
-      return inRange(e, startOf(day, 'day'), endOf(day, 'day'), accessors)
+      return inRange$1(e, startOf(day, 'day'), endOf(day, 'day'), accessors)
     })
     return events.map(function(event, idx) {
       var title = accessors.title(event)
@@ -5204,7 +5420,7 @@ function Agenda(_ref) {
   var end = add(date, length, 'day')
   var range$1 = range(date, end, 'day')
   events = events.filter(function(event) {
-    return inRange(event, startOf(date, 'day'), endOf(end, 'day'), accessors)
+    return inRange$1(event, startOf(date, 'day'), endOf(end, 'day'), accessors)
   })
   events.sort(function(a, b) {
     return +accessors.start(a) - +accessors.start(b)

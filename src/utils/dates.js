@@ -1,24 +1,24 @@
 /* eslint no-fallthrough: off */
-import * as dates from 'date-arithmetic'
+import * as dates from './date-arithmetic'
 
 export {
-  milliseconds,
-  seconds,
-  minutes,
-  hours,
-  month,
-  startOf,
-  endOf,
   add,
+  endOf,
   eq,
-  gte,
   gt,
-  lte,
-  lt,
+  gte,
+  hours,
   inRange,
-  min,
+  lt,
+  lte,
   max,
-} from 'date-arithmetic'
+  milliseconds,
+  min,
+  minutes,
+  month,
+  seconds,
+  startOf
+} from './date-arithmetic'
 
 const MILLI = {
   seconds: 1000,
