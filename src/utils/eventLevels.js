@@ -55,16 +55,26 @@ export function eventLevels(rowSegments, limit = Infinity) {
   return { levels, extra }
 }
 
-export function inRange(e, start, end, accessors) {
-  let eStart = dates.startOf(accessors.start(e), 'day')
-  let eEnd = accessors.end(e)
+export function inRange(e, start, end, accessors, timer) {
+  timer && timer.time('inRange')
+  const startTimestamp = accessors.start(e)
+  const endTimestamp = accessors.end(e)
 
-  let startsBeforeEnd = dates.lte(eStart, end, 'day')
-  // when the event is zero duration we need to handle a bit differently
-  let endsAfterStart = !dates.eq(eStart, eEnd, 'minutes')
-    ? dates.gt(eEnd, start, 'minutes')
-    : dates.gte(eEnd, start, 'minutes')
+  const startsBeforeEnd =
+    dates.startOf(startTimestamp, 'day') <= dates.startOf(end, 'day')
 
+  const endsAfterStart =
+    dates.startOf(start, 'minutes') <= dates.startOf(endTimestamp, 'minutes')
+
+  // let eStart = dates.startOf(accessors.start(e), 'day')
+  // let eEnd = accessors.end(e)
+
+  // let startsBeforeEndOriginal = dates.lte(eStart, end, 'day')
+  // // when the event is zero duration we need to handle a bit differently
+  // let endsAfterStartOriginal = !dates.eq(eStart, eEnd, 'minutes')
+  //   ? dates.gt(eEnd, start, 'minutes')
+  //   : dates.gte(eEnd, start, 'minutes')
+  timer && timer.timeEnd('inRange')
   return startsBeforeEnd && endsAfterStart
 }
 
@@ -75,9 +85,12 @@ export function segsOverlap(seg, otherSegs) {
 }
 
 export function sortEvents(evtA, evtB, accessors) {
-  let startSort =
+  const startSort =
     +dates.startOf(accessors.start(evtA), 'day') -
     +dates.startOf(accessors.start(evtB), 'day')
+
+  // sort by start Day first
+  if (startSort) return startSort
 
   let durA = dates.diff(
     accessors.start(evtA),
@@ -92,7 +105,6 @@ export function sortEvents(evtA, evtB, accessors) {
   )
 
   return (
-    startSort || // sort by start Day first
     Math.max(durB, 1) - Math.max(durA, 1) || // events spanning multiple days go first
     !!accessors.allDay(evtB) - !!accessors.allDay(evtA) || // then allDay single day events
     +accessors.start(evtA) - +accessors.start(evtB)

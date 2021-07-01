@@ -1,26 +1,27 @@
+import clsx from 'clsx'
+import * as animationFrame from 'dom-helpers/animationFrame'
+import getPosition from 'dom-helpers/position'
+import chunk from 'lodash/chunk'
 import PropTypes from 'prop-types'
 import React from 'react'
 import { findDOMNode } from 'react-dom'
-import clsx from 'clsx'
-
-import * as dates from './utils/dates'
-import chunk from 'lodash/chunk'
-
-import { navigate, views } from './utils/constants'
-import { notify } from './utils/helpers'
-import getPosition from 'dom-helpers/position'
-import * as animationFrame from 'dom-helpers/animationFrame'
-
-import Popup from './Popup'
 import Overlay from 'react-overlays/Overlay'
+import createTimer from './createTimer'
 import DateContentRow from './DateContentRow'
-import Header from './Header'
 import DateHeader from './DateHeader'
-
+import Header from './Header'
+import Popup from './Popup'
+import { navigate, views } from './utils/constants'
+import * as dates from './utils/dates'
 import { inRange, sortEvents } from './utils/eventLevels'
+import { notify } from './utils/helpers'
 
-let eventsForWeek = (evts, start, end, accessors) =>
-  evts.filter(e => inRange(e, start, end, accessors))
+let timer
+
+let eventsForWeek = (evts, start, end, accessors) => {
+  const result = evts.filter(e => inRange(e, start, end, accessors, timer))
+  return result
+}
 
 class MonthView extends React.Component {
   constructor(...args) {
@@ -33,6 +34,7 @@ class MonthView extends React.Component {
       rowLimit: 5,
       needLimitMeasure: true,
     }
+    timer = createTimer()
   }
 
   UNSAFE_componentWillReceiveProps({ date }) {
@@ -61,10 +63,22 @@ class MonthView extends React.Component {
   }
 
   componentDidUpdate() {
+    // console.log('did updated', {
+    //   inRangeAverage: timer.average('inRange'),
+    //   inRangeCount: timer.count('inRange'),
+    //   eventsForWeekAverage: timer.average('eventsForWeek'),
+    //   eventsForWeekCount: timer.count('eventsForWeek'),
+    // })
     if (this.state.needLimitMeasure) this.measureRowLimit(this.props)
   }
 
   componentWillUnmount() {
+    // console.log('will umount', {
+    //   inRangeAverage: timer.average('inRange'),
+    //   inRangeCount: timer.count('inRange'),
+    //   eventsForWeekAverage: timer.average('eventsForWeek'),
+    //   eventsForWeekCount: timer.count('eventsForWeek'),
+    // })
     window.removeEventListener('resize', this._resizeListener, false)
   }
 
@@ -111,9 +125,11 @@ class MonthView extends React.Component {
 
     const { needLimitMeasure, rowLimit } = this.state
 
+    timer.time('eventsForWeek')
     events = eventsForWeek(events, week[0], week[week.length - 1], accessors)
 
     events.sort((a, b) => sortEvents(a, b, accessors))
+    timer.timeEnd('eventsForWeek')
 
     return (
       <DateContentRow

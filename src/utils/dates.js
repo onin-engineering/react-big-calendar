@@ -2,22 +2,21 @@
 import * as dates from 'date-arithmetic'
 
 export {
-  milliseconds,
-  seconds,
-  minutes,
-  hours,
-  month,
-  startOf,
-  endOf,
   add,
+  endOf,
   eq,
-  gte,
   gt,
-  lte,
-  lt,
+  gte,
+  hours,
   inRange,
-  min,
+  lt,
+  lte,
   max,
+  milliseconds,
+  min,
+  minutes,
+  month,
+  seconds,
 } from 'date-arithmetic'
 
 const MILLI = {
@@ -36,9 +35,9 @@ export function monthsInYear(year) {
 }
 
 export function firstVisibleDay(date, localizer) {
-  let firstOfMonth = dates.startOf(date, 'month')
+  let firstOfMonth = startOf(date, 'month')
 
-  return dates.startOf(firstOfMonth, 'week', localizer.startOfWeek())
+  return startOf(firstOfMonth, 'week', localizer.startOfWeek())
 }
 
 export function lastVisibleDay(date, localizer) {
@@ -61,7 +60,7 @@ export function visibleDays(date, localizer) {
 }
 
 export function ceil(date, unit) {
-  let floor = dates.startOf(date, unit)
+  let floor = startOf(date, unit)
 
   return dates.eq(floor, date) ? floor : dates.add(floor, 1, unit)
 }
@@ -83,8 +82,10 @@ export function merge(date, time) {
 
   if (time == null) time = new Date()
   if (date == null) date = new Date()
+  if (typeof date === 'number') time = new Date(date)
+  if (typeof time === 'number') time = new Date(time)
 
-  date = dates.startOf(date, 'day')
+  date = startOf(date, 'day')
   date = dates.hours(date, dates.hours(time))
   date = dates.minutes(date, dates.minutes(time))
   date = dates.seconds(date, dates.seconds(time))
@@ -116,6 +117,17 @@ export function duration(start, end, unit, firstOfWeek) {
   )
 }
 
+export const truncateToDays = x => Math.floor(x / 86400000)
+export const truncateToMinutes = x => Math.floor(x / 60000)
+export const startOf = (d, unit) => {
+  if (unit === 'week') return d / 604800000
+  if (unit === 'day') return d / 86400000
+  if (unit === 'hour') return d / 3600000
+  if (unit === 'minutes') return d / 60000
+  if (unit === 'seconds') return d / 1000
+  if (unit === 'milliseconds') return d
+}
+
 export function diff(dateA, dateB, unit) {
   if (!unit || unit === 'milliseconds') return Math.abs(+dateA - +dateB)
 
@@ -124,8 +136,7 @@ export function diff(dateA, dateB, unit) {
   // since one day in the range may be shorter/longer by an hour
   return Math.round(
     Math.abs(
-      +dates.startOf(dateA, unit) / MILLI[unit] -
-        +dates.startOf(dateB, unit) / MILLI[unit]
+      startOf(dateA, unit) / MILLI[unit] - startOf(dateB, unit) / MILLI[unit]
     )
   )
 }
@@ -158,13 +169,13 @@ export function week(date) {
 }
 
 export function today() {
-  return dates.startOf(new Date(), 'day')
+  return startOf(new Date(), 'day')
 }
 
 export function yesterday() {
-  return dates.add(dates.startOf(new Date(), 'day'), -1, 'day')
+  return dates.add(startOf(new Date(), 'day'), -1, 'day')
 }
 
 export function tomorrow() {
-  return dates.add(dates.startOf(new Date(), 'day'), 1, 'day')
+  return dates.add(startOf(new Date(), 'day'), 1, 'day')
 }

@@ -708,7 +708,9 @@
     return (
       !!length &&
       (type == 'number' || (type != 'symbol' && reIsUint.test(value))) &&
-      value > -1 && value % 1 == 0 && value < length
+      value > -1 &&
+      value % 1 == 0 &&
+      value < length
     )
   }
 
@@ -2443,7 +2445,8 @@
       // Non `Object` object instances with different constructors are not equal.
       if (
         objCtor != othCtor &&
-        'constructor' in object && 'constructor' in other &&
+        'constructor' in object &&
+        'constructor' in other &&
         !(
           typeof objCtor == 'function' &&
           objCtor instanceof objCtor &&
@@ -6518,536 +6521,51 @@
     return self
   }
 
-  var MILI = 'milliseconds',
-    SECONDS = 'seconds',
-    MINUTES = 'minutes',
-    HOURS = 'hours',
-    DAY = 'day',
-    WEEK = 'week',
-    MONTH = 'month',
-    YEAR = 'year',
-    DECADE = 'decade',
-    CENTURY = 'century'
+  var canUseDOM = !!(
+    typeof window !== 'undefined' &&
+    window.document &&
+    window.document.createElement
+  )
 
-  var multiplierMilli = {
-    milliseconds: 1,
-    seconds: 1000,
-    minutes: 60 * 1000,
-    hours: 60 * 60 * 1000,
-    day: 24 * 60 * 60 * 1000,
-    week: 7 * 24 * 60 * 60 * 1000,
+  /* https://github.com/component/raf */
+  var prev = new Date().getTime()
+
+  function fallback(fn) {
+    var curr = new Date().getTime()
+    var ms = Math.max(0, 16 - (curr - prev))
+    var handle = setTimeout(fn, ms)
+    prev = curr
+    return handle
   }
 
-  var multiplierMonth = {
-    month: 1,
-    year: 12,
-    decade: 10 * 12,
-    century: 100 * 12,
-  }
+  var vendors = ['', 'webkit', 'moz', 'o', 'ms']
+  var cancelMethod = 'clearTimeout'
+  var rafImpl = fallback // eslint-disable-next-line import/no-mutable-exports
 
-  function daysOf(year) {
-    return [31, daysInFeb(year), 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
-  }
-
-  function daysInFeb(year) {
-    return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0 ? 29 : 28
-  }
-
-  function add(d, num, unit) {
-    d = new Date(d)
-
-    switch (unit) {
-      case MILI:
-      case SECONDS:
-      case MINUTES:
-      case HOURS:
-      case DAY:
-      case WEEK:
-        return addMillis(d, num * multiplierMilli[unit])
-      case MONTH:
-      case YEAR:
-      case DECADE:
-      case CENTURY:
-        return addMonths(d, num * multiplierMonth[unit])
-    }
-
-    throw new TypeError('Invalid units: "' + unit + '"')
-  }
-
-  function addMillis(d, num) {
-    var nextDate = new Date(+d + num)
-
-    return solveDST(d, nextDate)
-  }
-
-  function addMonths(d, num) {
-    var year = d.getFullYear(),
-      month = d.getMonth(),
-      day = d.getDate(),
-      totalMonths = year * 12 + month + num,
-      nextYear = Math.trunc(totalMonths / 12),
-      nextMonth = totalMonths % 12,
-      nextDay = Math.min(day, daysOf(nextYear)[nextMonth])
-
-    var nextDate = new Date(d)
-    nextDate.setFullYear(nextYear)
-
-    // To avoid a bug when sets the Feb month
-    // with a date > 28 or date > 29 (leap year)
-    nextDate.setDate(1)
-
-    nextDate.setMonth(nextMonth)
-    nextDate.setDate(nextDay)
-
-    return nextDate
-  }
-
-  function solveDST(currentDate, nextDate) {
-    var currentOffset = currentDate.getTimezoneOffset(),
-      nextOffset = nextDate.getTimezoneOffset()
-
-    // if is DST, add the difference in minutes
-    // else the difference is zero
-    var diffMinutes = nextOffset - currentOffset
-
-    return new Date(+nextDate + diffMinutes * multiplierMilli['minutes'])
-  }
-
-  function subtract(d, num, unit) {
-    return add(d, -num, unit)
-  }
-
-  function startOf(d, unit, firstOfWeek) {
-    d = new Date(d)
-
-    switch (unit) {
-      case CENTURY:
-      case DECADE:
-      case YEAR:
-        d = month(d, 0)
-      case MONTH:
-        d = date(d, 1)
-      case WEEK:
-      case DAY:
-        d = hours(d, 0)
-      case HOURS:
-        d = minutes(d, 0)
-      case MINUTES:
-        d = seconds(d, 0)
-      case SECONDS:
-        d = milliseconds(d, 0)
-    }
-
-    if (unit === DECADE) d = subtract(d, year(d) % 10, 'year')
-
-    if (unit === CENTURY) d = subtract(d, year(d) % 100, 'year')
-
-    if (unit === WEEK) d = weekday(d, 0, firstOfWeek)
-
-    return d
-  }
-
-  function endOf(d, unit, firstOfWeek) {
-    d = new Date(d)
-    d = startOf(d, unit, firstOfWeek)
-    switch (unit) {
-      case CENTURY:
-      case DECADE:
-      case YEAR:
-      case MONTH:
-      case WEEK:
-        d = add(d, 1, unit)
-        d = subtract(d, 1, DAY)
-        d.setHours(23, 59, 59, 999)
-        break
-      case DAY:
-        d.setHours(23, 59, 59, 999)
-        break
-      case HOURS:
-      case MINUTES:
-      case SECONDS:
-        d = add(d, 1, unit)
-        d = subtract(d, 1, MILI)
-    }
-    return d
-  }
-
-  var eq$1 = createComparer(function(a, b) {
-    return a === b
-  })
-  var gt = createComparer(function(a, b) {
-    return a > b
-  })
-  var gte = createComparer(function(a, b) {
-    return a >= b
-  })
-  var lt = createComparer(function(a, b) {
-    return a < b
-  })
-  var lte = createComparer(function(a, b) {
-    return a <= b
-  })
-
-  function min() {
-    return new Date(Math.min.apply(Math, arguments))
-  }
-
-  function max() {
-    return new Date(Math.max.apply(Math, arguments))
-  }
-
-  function inRange(day, min, max, unit) {
-    unit = unit || 'day'
-
-    return (!min || gte(day, min, unit)) && (!max || lte(day, max, unit))
-  }
-
-  var milliseconds = createAccessor('Milliseconds')
-  var seconds = createAccessor('Seconds')
-  var minutes = createAccessor('Minutes')
-  var hours = createAccessor('Hours')
-  var day = createAccessor('Day')
-  var date = createAccessor('Date')
-  var month = createAccessor('Month')
-  var year = createAccessor('FullYear')
-
-  function weekday(d, val, firstDay) {
-    var w = (day(d) + 7 - (firstDay || 0)) % 7
-
-    return val === undefined ? w : add(d, val - w, DAY)
-  }
-
-  function createAccessor(method) {
-    var hourLength = (function(method) {
-      switch (method) {
-        case 'Milliseconds':
-          return 3600000
-        case 'Seconds':
-          return 3600
-        case 'Minutes':
-          return 60
-        case 'Hours':
-          return 1
-        default:
-          return null
-      }
-    })(method)
-
-    return function(d, val) {
-      if (val === undefined) return d['get' + method]()
-
-      var dateOut = new Date(d)
-      dateOut['set' + method](val)
-
-      if (
-        hourLength &&
-        dateOut['get' + method]() != val &&
-        (method === 'Hours' ||
-          (val >= hourLength &&
-            dateOut.getHours() - d.getHours() < Math.floor(val / hourLength)))
-      ) {
-        //Skip DST hour, if it occurs
-        dateOut['set' + method](val + hourLength)
-      }
-
-      return dateOut
-    }
-  }
-
-  function createComparer(operator) {
-    return function(a, b, unit) {
-      return operator(+startOf(a, unit), +startOf(b, unit))
-    }
-  }
-
-  /* eslint no-fallthrough: off */
-  var MILLI = {
-    seconds: 1000,
-    minutes: 1000 * 60,
-    hours: 1000 * 60 * 60,
-    day: 1000 * 60 * 60 * 24,
-  }
-  function firstVisibleDay(date, localizer) {
-    var firstOfMonth = startOf(date, 'month')
-    return startOf(firstOfMonth, 'week', localizer.startOfWeek())
-  }
-  function lastVisibleDay(date, localizer) {
-    var endOfMonth = endOf(date, 'month')
-    return endOf(endOfMonth, 'week', localizer.startOfWeek())
-  }
-  function visibleDays(date, localizer) {
-    var current = firstVisibleDay(date, localizer),
-      last = lastVisibleDay(date, localizer),
-      days = []
-
-    while (lte(current, last, 'day')) {
-      days.push(current)
-      current = add(current, 1, 'day')
-    }
-
-    return days
-  }
-  function ceil(date, unit) {
-    var floor = startOf(date, unit)
-    return eq$1(floor, date) ? floor : add(floor, 1, unit)
-  }
-  function range(start, end, unit) {
-    if (unit === void 0) {
-      unit = 'day'
-    }
-
-    var current = start,
-      days = []
-
-    while (lte(current, end, unit)) {
-      days.push(current)
-      current = add(current, 1, unit)
-    }
-
-    return days
-  }
-  function merge(date, time) {
-    if (time == null && date == null) return null
-    if (time == null) time = new Date()
-    if (date == null) date = new Date()
-    date = startOf(date, 'day')
-    date = hours(date, hours(time))
-    date = minutes(date, minutes(time))
-    date = seconds(date, seconds(time))
-    return milliseconds(date, milliseconds(time))
-  }
-  function isJustDate(date) {
+  var getKey = function getKey(vendor, k) {
     return (
-      hours(date) === 0 &&
-      minutes(date) === 0 &&
-      seconds(date) === 0 &&
-      milliseconds(date) === 0
-    )
-  }
-  function diff(dateA, dateB, unit) {
-    if (!unit || unit === 'milliseconds') return Math.abs(+dateA - +dateB) // the .round() handles an edge case
-    // with DST where the total won't be exact
-    // since one day in the range may be shorter/longer by an hour
-
-    return Math.round(
-      Math.abs(
-        +startOf(dateA, unit) / MILLI[unit] -
-          +startOf(dateB, unit) / MILLI[unit]
-      )
+      vendor +
+      (!vendor ? k : k[0].toUpperCase() + k.substr(1)) +
+      'AnimationFrame'
     )
   }
 
-  /** Used to match a single whitespace character. */
-  var reWhitespace = /\s/
+  if (canUseDOM) {
+    vendors.some(function(vendor) {
+      var rafMethod = getKey(vendor, 'request')
 
-  /**
-   * Used by `_.trim` and `_.trimEnd` to get the index of the last non-whitespace
-   * character of `string`.
-   *
-   * @private
-   * @param {string} string The string to inspect.
-   * @returns {number} Returns the index of the last non-whitespace character.
-   */
-  function trimmedEndIndex(string) {
-    var index = string.length
+      if (rafMethod in window) {
+        cancelMethod = getKey(vendor, 'cancel') // @ts-ignore
 
-    while (index-- && reWhitespace.test(string.charAt(index))) {}
-    return index
+        rafImpl = function rafImpl(cb) {
+          return window[rafMethod](cb)
+        }
+      }
+
+      return !!rafImpl
+    })
   }
-
-  /** Used to match leading whitespace. */
-  var reTrimStart = /^\s+/
-
-  /**
-   * The base implementation of `_.trim`.
-   *
-   * @private
-   * @param {string} string The string to trim.
-   * @returns {string} Returns the trimmed string.
-   */
-  function baseTrim(string) {
-    return string
-      ? string.slice(0, trimmedEndIndex(string) + 1).replace(reTrimStart, '')
-      : string
-  }
-
-  /** Used as references for various `Number` constants. */
-  var NAN = 0 / 0
-
-  /** Used to detect bad signed hexadecimal string values. */
-  var reIsBadHex = /^[-+]0x[0-9a-f]+$/i
-
-  /** Used to detect binary string values. */
-  var reIsBinary = /^0b[01]+$/i
-
-  /** Used to detect octal string values. */
-  var reIsOctal = /^0o[0-7]+$/i
-
-  /** Built-in method references without a dependency on `root`. */
-  var freeParseInt = parseInt
-
-  /**
-   * Converts `value` to a number.
-   *
-   * @static
-   * @memberOf _
-   * @since 4.0.0
-   * @category Lang
-   * @param {*} value The value to process.
-   * @returns {number} Returns the number.
-   * @example
-   *
-   * _.toNumber(3.2);
-   * // => 3.2
-   *
-   * _.toNumber(Number.MIN_VALUE);
-   * // => 5e-324
-   *
-   * _.toNumber(Infinity);
-   * // => Infinity
-   *
-   * _.toNumber('3.2');
-   * // => 3.2
-   */
-  function toNumber(value) {
-    if (typeof value == 'number') {
-      return value
-    }
-    if (isSymbol(value)) {
-      return NAN
-    }
-    if (isObject(value)) {
-      var other = typeof value.valueOf == 'function' ? value.valueOf() : value
-      value = isObject(other) ? other + '' : other
-    }
-    if (typeof value != 'string') {
-      return value === 0 ? value : +value
-    }
-    value = baseTrim(value)
-    var isBinary = reIsBinary.test(value)
-    return isBinary || reIsOctal.test(value)
-      ? freeParseInt(value.slice(2), isBinary ? 2 : 8)
-      : reIsBadHex.test(value)
-      ? NAN
-      : +value
-  }
-
-  /** Used as references for various `Number` constants. */
-  var INFINITY$2 = 1 / 0,
-    MAX_INTEGER = 1.7976931348623157e308
-
-  /**
-   * Converts `value` to a finite number.
-   *
-   * @static
-   * @memberOf _
-   * @since 4.12.0
-   * @category Lang
-   * @param {*} value The value to convert.
-   * @returns {number} Returns the converted number.
-   * @example
-   *
-   * _.toFinite(3.2);
-   * // => 3.2
-   *
-   * _.toFinite(Number.MIN_VALUE);
-   * // => 5e-324
-   *
-   * _.toFinite(Infinity);
-   * // => 1.7976931348623157e+308
-   *
-   * _.toFinite('3.2');
-   * // => 3.2
-   */
-  function toFinite(value) {
-    if (!value) {
-      return value === 0 ? value : 0
-    }
-    value = toNumber(value)
-    if (value === INFINITY$2 || value === -INFINITY$2) {
-      var sign = value < 0 ? -1 : 1
-      return sign * MAX_INTEGER
-    }
-    return value === value ? value : 0
-  }
-
-  /**
-   * Converts `value` to an integer.
-   *
-   * **Note:** This method is loosely based on
-   * [`ToInteger`](http://www.ecma-international.org/ecma-262/7.0/#sec-tointeger).
-   *
-   * @static
-   * @memberOf _
-   * @since 4.0.0
-   * @category Lang
-   * @param {*} value The value to convert.
-   * @returns {number} Returns the converted integer.
-   * @example
-   *
-   * _.toInteger(3.2);
-   * // => 3
-   *
-   * _.toInteger(Number.MIN_VALUE);
-   * // => 0
-   *
-   * _.toInteger(Infinity);
-   * // => 1.7976931348623157e+308
-   *
-   * _.toInteger('3.2');
-   * // => 3
-   */
-  function toInteger(value) {
-    var result = toFinite(value),
-      remainder = result % 1
-
-    return result === result ? (remainder ? result - remainder : result) : 0
-  }
-
-  /* Built-in method references for those with the same name as other `lodash` methods. */
-  var nativeCeil = Math.ceil,
-    nativeMax$1 = Math.max
-
-  /**
-   * Creates an array of elements split into groups the length of `size`.
-   * If `array` can't be split evenly, the final chunk will be the remaining
-   * elements.
-   *
-   * @static
-   * @memberOf _
-   * @since 3.0.0
-   * @category Array
-   * @param {Array} array The array to process.
-   * @param {number} [size=1] The length of each chunk
-   * @param- {Object} [guard] Enables use as an iteratee for methods like `_.map`.
-   * @returns {Array} Returns the new array of chunks.
-   * @example
-   *
-   * _.chunk(['a', 'b', 'c', 'd'], 2);
-   * // => [['a', 'b'], ['c', 'd']]
-   *
-   * _.chunk(['a', 'b', 'c', 'd'], 3);
-   * // => [['a', 'b', 'c'], ['d']]
-   */
-  function chunk(array, size, guard) {
-    if (guard ? isIterateeCall(array, size, guard) : size === undefined) {
-      size = 1
-    } else {
-      size = nativeMax$1(toInteger(size), 0)
-    }
-    var length = array == null ? 0 : array.length
-    if (!length || size < 1) {
-      return []
-    }
-    var index = 0,
-      resIndex = 0,
-      result = Array(nativeCeil(length / size))
-
-    while (index < length) {
-      result[resIndex++] = baseSlice(array, index, (index += size))
-    }
-    return result
-  }
+  var request = rafImpl
 
   /**
    * Returns the owner document of a given element.
@@ -7280,412 +6798,217 @@
     })
   }
 
-  var canUseDOM = !!(
-    typeof window !== 'undefined' &&
-    window.document &&
-    window.document.createElement
-  )
+  /** Used to match a single whitespace character. */
+  var reWhitespace = /\s/
 
-  /* https://github.com/component/raf */
-  var prev = new Date().getTime()
-
-  function fallback(fn) {
-    var curr = new Date().getTime()
-    var ms = Math.max(0, 16 - (curr - prev))
-    var handle = setTimeout(fn, ms)
-    prev = curr
-    return handle
-  }
-
-  var vendors = ['', 'webkit', 'moz', 'o', 'ms']
-  var cancelMethod = 'clearTimeout'
-  var rafImpl = fallback // eslint-disable-next-line import/no-mutable-exports
-
-  var getKey = function getKey(vendor, k) {
-    return (
-      vendor +
-      (!vendor ? k : k[0].toUpperCase() + k.substr(1)) +
-      'AnimationFrame'
-    )
-  }
-
-  if (canUseDOM) {
-    vendors.some(function(vendor) {
-      var rafMethod = getKey(vendor, 'request')
-
-      if (rafMethod in window) {
-        cancelMethod = getKey(vendor, 'cancel') // @ts-ignore
-
-        rafImpl = function rafImpl(cb) {
-          return window[rafMethod](cb)
-        }
-      }
-
-      return !!rafImpl
-    })
-  }
-  var request = rafImpl
-
-  var _excluded = [
-    'style',
-    'className',
-    'event',
-    'selected',
-    'isAllDay',
-    'onSelect',
-    'onDoubleClick',
-    'onKeyPress',
-    'localizer',
-    'continuesPrior',
-    'continuesAfter',
-    'accessors',
-    'getters',
-    'children',
-    'components',
-    'slotStart',
-    'slotEnd',
-  ]
-
-  var EventCell = /*#__PURE__*/ (function(_React$Component) {
-    _inheritsLoose(EventCell, _React$Component)
-
-    function EventCell() {
-      return _React$Component.apply(this, arguments) || this
-    }
-
-    var _proto = EventCell.prototype
-
-    _proto.render = function render() {
-      var _this$props = this.props,
-        style = _this$props.style,
-        className = _this$props.className,
-        event = _this$props.event,
-        selected = _this$props.selected,
-        isAllDay = _this$props.isAllDay,
-        onSelect = _this$props.onSelect,
-        _onDoubleClick = _this$props.onDoubleClick,
-        _onKeyPress = _this$props.onKeyPress,
-        localizer = _this$props.localizer,
-        continuesPrior = _this$props.continuesPrior,
-        continuesAfter = _this$props.continuesAfter,
-        accessors = _this$props.accessors,
-        getters = _this$props.getters,
-        children = _this$props.children,
-        _this$props$component = _this$props.components,
-        Event = _this$props$component.event,
-        EventWrapper = _this$props$component.eventWrapper,
-        slotStart = _this$props.slotStart,
-        slotEnd = _this$props.slotEnd,
-        props = _objectWithoutPropertiesLoose(_this$props, _excluded)
-
-      delete props.resizable
-      var title = accessors.title(event)
-      var tooltip = accessors.tooltip(event)
-      var end = accessors.end(event)
-      var start = accessors.start(event)
-      var allDay = accessors.allDay(event)
-      var showAsAllDay =
-        isAllDay || allDay || diff(start, ceil(end, 'day'), 'day') > 1
-      var userProps = getters.eventProp(event, start, end, selected)
-      var content = /*#__PURE__*/ React__default.createElement(
-        'div',
-        {
-          className: 'rbc-event-content',
-          title: tooltip || undefined,
-        },
-        Event
-          ? /*#__PURE__*/ React__default.createElement(Event, {
-              event: event,
-              continuesPrior: continuesPrior,
-              continuesAfter: continuesAfter,
-              title: title,
-              isAllDay: allDay,
-              localizer: localizer,
-              slotStart: slotStart,
-              slotEnd: slotEnd,
-            })
-          : title
-      )
-      return /*#__PURE__*/ React__default.createElement(
-        EventWrapper,
-        _extends({}, this.props, {
-          type: 'date',
-        }),
-        /*#__PURE__*/ React__default.createElement(
-          'div',
-          _extends({}, props, {
-            tabIndex: 0,
-            style: _extends({}, userProps.style, style),
-            className: clsx('rbc-event', className, userProps.className, {
-              'rbc-selected': selected,
-              'rbc-event-allday': showAsAllDay,
-              'rbc-event-continues-prior': continuesPrior,
-              'rbc-event-continues-after': continuesAfter,
-            }),
-            onClick: function onClick(e) {
-              return onSelect && onSelect(event, e)
-            },
-            onDoubleClick: function onDoubleClick(e) {
-              return _onDoubleClick && _onDoubleClick(event, e)
-            },
-            onKeyPress: function onKeyPress(e) {
-              return _onKeyPress && _onKeyPress(event, e)
-            },
-          }),
-          typeof children === 'function' ? children(content) : content
-        )
-      )
-    }
-
-    return EventCell
-  })(React__default.Component)
-
-  EventCell.propTypes = {
-    event: propTypes.object.isRequired,
-    slotStart: propTypes.instanceOf(Date),
-    slotEnd: propTypes.instanceOf(Date),
-    resizable: propTypes.bool,
-    selected: propTypes.bool,
-    isAllDay: propTypes.bool,
-    continuesPrior: propTypes.bool,
-    continuesAfter: propTypes.bool,
-    accessors: propTypes.object.isRequired,
-    components: propTypes.object.isRequired,
-    getters: propTypes.object.isRequired,
-    localizer: propTypes.object,
-    onSelect: propTypes.func,
-    onDoubleClick: propTypes.func,
-    onKeyPress: propTypes.func,
-  }
-
-  function isSelected(event, selected) {
-    if (!event || selected == null) return false
-    return [].concat(selected).indexOf(event) !== -1
-  }
-  function slotWidth(rowBox, slots) {
-    var rowWidth = rowBox.right - rowBox.left
-    var cellWidth = rowWidth / slots
-    return cellWidth
-  }
-  function getSlotAtX(rowBox, x, rtl, slots) {
-    var cellWidth = slotWidth(rowBox, slots)
-    return rtl
-      ? slots - 1 - Math.floor((x - rowBox.left) / cellWidth)
-      : Math.floor((x - rowBox.left) / cellWidth)
-  }
-  function pointInBox(box, _ref) {
-    var x = _ref.x,
-      y = _ref.y
-    return y >= box.top && y <= box.bottom && x >= box.left && x <= box.right
-  }
-  function dateCellSelection(start, rowBox, box, slots, rtl) {
-    var startIdx = -1
-    var endIdx = -1
-    var lastSlotIdx = slots - 1
-    var cellWidth = slotWidth(rowBox, slots) // cell under the mouse
-
-    var currentSlot = getSlotAtX(rowBox, box.x, rtl, slots) // Identify row as either the initial row
-    // or the row under the current mouse point
-
-    var isCurrentRow = rowBox.top < box.y && rowBox.bottom > box.y
-    var isStartRow = rowBox.top < start.y && rowBox.bottom > start.y // this row's position relative to the start point
-
-    var isAboveStart = start.y > rowBox.bottom
-    var isBelowStart = rowBox.top > start.y
-    var isBetween = box.top < rowBox.top && box.bottom > rowBox.bottom // this row is between the current and start rows, so entirely selected
-
-    if (isBetween) {
-      startIdx = 0
-      endIdx = lastSlotIdx
-    }
-
-    if (isCurrentRow) {
-      if (isBelowStart) {
-        startIdx = 0
-        endIdx = currentSlot
-      } else if (isAboveStart) {
-        startIdx = currentSlot
-        endIdx = lastSlotIdx
-      }
-    }
-
-    if (isStartRow) {
-      // select the cell under the initial point
-      startIdx = endIdx = rtl
-        ? lastSlotIdx - Math.floor((start.x - rowBox.left) / cellWidth)
-        : Math.floor((start.x - rowBox.left) / cellWidth)
-
-      if (isCurrentRow) {
-        if (currentSlot < startIdx) startIdx = currentSlot
-        else endIdx = currentSlot //select current range
-      } else if (start.y < box.y) {
-        // the current row is below start row
-        // select cells to the right of the start cell
-        endIdx = lastSlotIdx
-      } else {
-        // select cells to the left of the start cell
-        startIdx = 0
-      }
-    }
-
-    return {
-      startIdx: startIdx,
-      endIdx: endIdx,
-    }
-  }
-
-  var Popup = /*#__PURE__*/ (function(_React$Component) {
-    _inheritsLoose(Popup, _React$Component)
-
-    function Popup() {
-      return _React$Component.apply(this, arguments) || this
-    }
-
-    var _proto = Popup.prototype
-
-    _proto.componentDidMount = function componentDidMount() {
-      var _this$props = this.props,
-        _this$props$popupOffs = _this$props.popupOffset,
-        popupOffset =
-          _this$props$popupOffs === void 0 ? 5 : _this$props$popupOffs,
-        popperRef = _this$props.popperRef,
-        _getOffset = offset(popperRef.current),
-        top = _getOffset.top,
-        left = _getOffset.left,
-        width = _getOffset.width,
-        height = _getOffset.height,
-        viewBottom = window.innerHeight + getScrollTop(window),
-        viewRight = window.innerWidth + getScrollLeft(window),
-        bottom = top + height,
-        right = left + width
-
-      if (bottom > viewBottom || right > viewRight) {
-        var topOffset, leftOffset
-        if (bottom > viewBottom)
-          topOffset = bottom - viewBottom + (popupOffset.y || +popupOffset || 0)
-        if (right > viewRight)
-          leftOffset = right - viewRight + (popupOffset.x || +popupOffset || 0)
-        this.setState({
-          topOffset: topOffset,
-          leftOffset: leftOffset,
-        }) //eslint-disable-line
-      }
-    }
-
-    _proto.render = function render() {
-      var _this = this
-
-      var _this$props2 = this.props,
-        events = _this$props2.events,
-        selected = _this$props2.selected,
-        getters = _this$props2.getters,
-        accessors = _this$props2.accessors,
-        components = _this$props2.components,
-        onSelect = _this$props2.onSelect,
-        onDoubleClick = _this$props2.onDoubleClick,
-        onKeyPress = _this$props2.onKeyPress,
-        slotStart = _this$props2.slotStart,
-        slotEnd = _this$props2.slotEnd,
-        localizer = _this$props2.localizer,
-        popperRef = _this$props2.popperRef
-      var width = this.props.position.width,
-        topOffset = (this.state || {}).topOffset || 0,
-        leftOffset = (this.state || {}).leftOffset || 0
-      var style = {
-        top: -topOffset,
-        left: -leftOffset,
-        minWidth: width + width / 2,
-      }
-      return /*#__PURE__*/ React__default.createElement(
-        'div',
-        {
-          style: _extends({}, this.props.style, style),
-          className: 'rbc-overlay',
-          ref: popperRef,
-        },
-        /*#__PURE__*/ React__default.createElement(
-          'div',
-          {
-            className: 'rbc-overlay-header',
-          },
-          localizer.format(slotStart, 'dayHeaderFormat')
-        ),
-        events.map(function(event, idx) {
-          return /*#__PURE__*/ React__default.createElement(EventCell, {
-            key: idx,
-            type: 'popup',
-            event: event,
-            getters: getters,
-            onSelect: onSelect,
-            accessors: accessors,
-            components: components,
-            onDoubleClick: onDoubleClick,
-            onKeyPress: onKeyPress,
-            continuesPrior: lt(accessors.end(event), slotStart, 'day'),
-            continuesAfter: gte(accessors.start(event), slotEnd, 'day'),
-            slotStart: slotStart,
-            slotEnd: slotEnd,
-            selected: isSelected(event, selected),
-            draggable: true,
-            onDragStart: function onDragStart() {
-              return _this.props.handleDragStart(event)
-            },
-            onDragEnd: function onDragEnd() {
-              return _this.props.show()
-            },
-          })
-        })
-      )
-    }
-
-    return Popup
-  })(React__default.Component)
-
-  Popup.propTypes = {
-    position: propTypes.object,
-    popupOffset: propTypes.oneOfType([
-      propTypes.number,
-      propTypes.shape({
-        x: propTypes.number,
-        y: propTypes.number,
-      }),
-    ]),
-    events: propTypes.array,
-    selected: propTypes.object,
-    accessors: propTypes.object.isRequired,
-    components: propTypes.object.isRequired,
-    getters: propTypes.object.isRequired,
-    localizer: propTypes.object.isRequired,
-    onSelect: propTypes.func,
-    onDoubleClick: propTypes.func,
-    onKeyPress: propTypes.func,
-    handleDragStart: propTypes.func,
-    show: propTypes.func,
-    slotStart: propTypes.instanceOf(Date),
-    slotEnd: propTypes.number,
-    popperRef: propTypes.oneOfType([
-      propTypes.func,
-      propTypes.shape({
-        current: propTypes.Element,
-      }),
-    ]),
-  }
   /**
-   * The Overlay component, of react-overlays, creates a ref that is passed to the Popup, and
-   * requires proper ref forwarding to be used without error
+   * Used by `_.trim` and `_.trimEnd` to get the index of the last non-whitespace
+   * character of `string`.
+   *
+   * @private
+   * @param {string} string The string to inspect.
+   * @returns {number} Returns the index of the last non-whitespace character.
    */
+  function trimmedEndIndex(string) {
+    var index = string.length
 
-  var Popup$1 = /*#__PURE__*/ React__default.forwardRef(function(props, ref) {
-    return /*#__PURE__*/ React__default.createElement(
-      Popup,
-      _extends(
-        {
-          popperRef: ref,
-        },
-        props
-      )
-    )
-  })
+    while (index-- && reWhitespace.test(string.charAt(index))) {}
+    return index
+  }
+
+  /** Used to match leading whitespace. */
+  var reTrimStart = /^\s+/
+
+  /**
+   * The base implementation of `_.trim`.
+   *
+   * @private
+   * @param {string} string The string to trim.
+   * @returns {string} Returns the trimmed string.
+   */
+  function baseTrim(string) {
+    return string
+      ? string.slice(0, trimmedEndIndex(string) + 1).replace(reTrimStart, '')
+      : string
+  }
+
+  /** Used as references for various `Number` constants. */
+  var NAN = 0 / 0
+
+  /** Used to detect bad signed hexadecimal string values. */
+  var reIsBadHex = /^[-+]0x[0-9a-f]+$/i
+
+  /** Used to detect binary string values. */
+  var reIsBinary = /^0b[01]+$/i
+
+  /** Used to detect octal string values. */
+  var reIsOctal = /^0o[0-7]+$/i
+
+  /** Built-in method references without a dependency on `root`. */
+  var freeParseInt = parseInt
+
+  /**
+   * Converts `value` to a number.
+   *
+   * @static
+   * @memberOf _
+   * @since 4.0.0
+   * @category Lang
+   * @param {*} value The value to process.
+   * @returns {number} Returns the number.
+   * @example
+   *
+   * _.toNumber(3.2);
+   * // => 3.2
+   *
+   * _.toNumber(Number.MIN_VALUE);
+   * // => 5e-324
+   *
+   * _.toNumber(Infinity);
+   * // => Infinity
+   *
+   * _.toNumber('3.2');
+   * // => 3.2
+   */
+  function toNumber(value) {
+    if (typeof value == 'number') {
+      return value
+    }
+    if (isSymbol(value)) {
+      return NAN
+    }
+    if (isObject(value)) {
+      var other = typeof value.valueOf == 'function' ? value.valueOf() : value
+      value = isObject(other) ? other + '' : other
+    }
+    if (typeof value != 'string') {
+      return value === 0 ? value : +value
+    }
+    value = baseTrim(value)
+    var isBinary = reIsBinary.test(value)
+    return isBinary || reIsOctal.test(value)
+      ? freeParseInt(value.slice(2), isBinary ? 2 : 8)
+      : reIsBadHex.test(value)
+      ? NAN
+      : +value
+  }
+
+  /** Used as references for various `Number` constants. */
+  var INFINITY$2 = 1 / 0,
+    MAX_INTEGER = 1.7976931348623157e308
+
+  /**
+   * Converts `value` to a finite number.
+   *
+   * @static
+   * @memberOf _
+   * @since 4.12.0
+   * @category Lang
+   * @param {*} value The value to convert.
+   * @returns {number} Returns the converted number.
+   * @example
+   *
+   * _.toFinite(3.2);
+   * // => 3.2
+   *
+   * _.toFinite(Number.MIN_VALUE);
+   * // => 5e-324
+   *
+   * _.toFinite(Infinity);
+   * // => 1.7976931348623157e+308
+   *
+   * _.toFinite('3.2');
+   * // => 3.2
+   */
+  function toFinite(value) {
+    if (!value) {
+      return value === 0 ? value : 0
+    }
+    value = toNumber(value)
+    if (value === INFINITY$2 || value === -INFINITY$2) {
+      var sign = value < 0 ? -1 : 1
+      return sign * MAX_INTEGER
+    }
+    return value === value ? value : 0
+  }
+
+  /**
+   * Converts `value` to an integer.
+   *
+   * **Note:** This method is loosely based on
+   * [`ToInteger`](http://www.ecma-international.org/ecma-262/7.0/#sec-tointeger).
+   *
+   * @static
+   * @memberOf _
+   * @since 4.0.0
+   * @category Lang
+   * @param {*} value The value to convert.
+   * @returns {number} Returns the converted integer.
+   * @example
+   *
+   * _.toInteger(3.2);
+   * // => 3
+   *
+   * _.toInteger(Number.MIN_VALUE);
+   * // => 0
+   *
+   * _.toInteger(Infinity);
+   * // => 1.7976931348623157e+308
+   *
+   * _.toInteger('3.2');
+   * // => 3
+   */
+  function toInteger(value) {
+    var result = toFinite(value),
+      remainder = result % 1
+
+    return result === result ? (remainder ? result - remainder : result) : 0
+  }
+
+  /* Built-in method references for those with the same name as other `lodash` methods. */
+  var nativeCeil = Math.ceil,
+    nativeMax$1 = Math.max
+
+  /**
+   * Creates an array of elements split into groups the length of `size`.
+   * If `array` can't be split evenly, the final chunk will be the remaining
+   * elements.
+   *
+   * @static
+   * @memberOf _
+   * @since 3.0.0
+   * @category Array
+   * @param {Array} array The array to process.
+   * @param {number} [size=1] The length of each chunk
+   * @param- {Object} [guard] Enables use as an iteratee for methods like `_.map`.
+   * @returns {Array} Returns the new array of chunks.
+   * @example
+   *
+   * _.chunk(['a', 'b', 'c', 'd'], 2);
+   * // => [['a', 'b'], ['c', 'd']]
+   *
+   * _.chunk(['a', 'b', 'c', 'd'], 3);
+   * // => [['a', 'b', 'c'], ['d']]
+   */
+  function chunk(array, size, guard) {
+    if (guard ? isIterateeCall(array, size, guard) : size === undefined) {
+      size = 1
+    } else {
+      size = nativeMax$1(toInteger(size), 0)
+    }
+    var length = array == null ? 0 : array.length
+    if (!length || size < 1) {
+      return []
+    }
+    var index = 0,
+      resIndex = 0,
+      result = Array(nativeCeil(length / size))
+
+    while (index < length) {
+      result[resIndex++] = baseSlice(array, index, (index += size))
+    }
+    return result
+  }
 
   /**
    * A convenience hook around `useState` designed to be paired with
@@ -8026,12 +7349,12 @@
     return ['top', 'bottom'].indexOf(placement) >= 0 ? 'x' : 'y'
   }
 
-  var max$1 = Math.max
-  var min$1 = Math.min
+  var max = Math.max
+  var min = Math.min
   var round = Math.round
 
-  function within(min, value, max) {
-    return max$1(min, min$1(value, max))
+  function within(min$1, value, max$1) {
+    return max(min$1, min(value, max$1))
   }
 
   function getFreshSideObject() {
@@ -8527,13 +7850,13 @@
       (_element$ownerDocumen = element.ownerDocument) == null
         ? void 0
         : _element$ownerDocumen.body
-    var width = max$1(
+    var width = max(
       html.scrollWidth,
       html.clientWidth,
       body ? body.scrollWidth : 0,
       body ? body.clientWidth : 0
     )
-    var height = max$1(
+    var height = max(
       html.scrollHeight,
       html.clientHeight,
       body ? body.scrollHeight : 0,
@@ -8543,7 +7866,7 @@
     var y = -winScroll.scrollTop
 
     if (getComputedStyle$1(body || html).direction === 'rtl') {
-      x += max$1(html.clientWidth, body ? body.clientWidth : 0) - width
+      x += max(html.clientWidth, body ? body.clientWidth : 0) - width
     }
 
     return {
@@ -8677,10 +8000,10 @@
       clippingParent
     ) {
       var rect = getClientRectFromMixedType(element, clippingParent)
-      accRect.top = max$1(rect.top, accRect.top)
-      accRect.right = min$1(rect.right, accRect.right)
-      accRect.bottom = min$1(rect.bottom, accRect.bottom)
-      accRect.left = max$1(rect.left, accRect.left)
+      accRect.top = max(rect.top, accRect.top)
+      accRect.right = min(rect.right, accRect.right)
+      accRect.bottom = min(rect.bottom, accRect.bottom)
+      accRect.left = max(rect.left, accRect.left)
       return accRect
     },
     getClientRectFromMixedType(element, firstClippingParent))
@@ -9268,8 +8591,8 @@
       var altSide = mainAxis === 'y' ? bottom : right
       var len = mainAxis === 'y' ? 'height' : 'width'
       var offset = popperOffsets[mainAxis]
-      var min = popperOffsets[mainAxis] + overflow[mainSide]
-      var max = popperOffsets[mainAxis] - overflow[altSide]
+      var min$1 = popperOffsets[mainAxis] + overflow[mainSide]
+      var max$1 = popperOffsets[mainAxis] - overflow[altSide]
       var additive = tether ? -popperRect[len] / 2 : 0
       var minLen = variation === start ? referenceRect[len] : popperRect[len]
       var maxLen = variation === start ? -popperRect[len] : -referenceRect[len] // We need to include the arrow in the calculation so the arrow doesn't go
@@ -9324,9 +8647,9 @@
 
       if (checkMainAxis) {
         var preventedOffset = within(
-          tether ? min$1(min, tetherMin) : min,
+          tether ? min(min$1, tetherMin) : min$1,
           offset,
-          tether ? max$1(max, tetherMax) : max
+          tether ? max(max$1, tetherMax) : max$1
         )
         popperOffsets[mainAxis] = preventedOffset
         data[mainAxis] = preventedOffset - offset
@@ -9344,9 +8667,9 @@
         var _max = _offset - overflow[_altSide]
 
         var _preventedOffset = within(
-          tether ? min$1(_min, tetherMin) : _min,
+          tether ? min(_min, tetherMin) : _min,
           _offset,
-          tether ? max$1(_max, tetherMax) : _max
+          tether ? max(_max, tetherMax) : _max
         )
 
         popperOffsets[altAxis] = _preventedOffset
@@ -10147,14 +9470,12 @@
     var popperInstanceRef = React.useRef()
     var update = React.useCallback(function() {
       var _popperInstanceRef$cu
-
       ;(_popperInstanceRef$cu = popperInstanceRef.current) == null
         ? void 0
         : _popperInstanceRef$cu.update()
     }, [])
     var forceUpdate = React.useCallback(function() {
       var _popperInstanceRef$cu2
-
       ;(_popperInstanceRef$cu2 = popperInstanceRef.current) == null
         ? void 0
         : _popperInstanceRef$cu2.forceUpdate()
@@ -10968,6 +10289,69 @@
     onExited: propTypes.func,
   }
 
+  var sum = function sum(x) {
+    var s = 0
+
+    for (var i = 0; i < x.length; i++) {
+      s += x[i]
+    }
+
+    return s
+  }
+
+  var mean = function mean(x) {
+    return sum(x) / x.length
+  }
+
+  var createTimer = function createTimer() {
+    var started = {}
+    var timings = {}
+
+    var time = function time(label) {
+      started[label] = performance.now()
+    }
+
+    var timeEnd = function timeEnd(label) {
+      var end = performance.now()
+
+      if (started[label]) {
+        timings[label] = timings[label] || []
+        timings[label].push(end - started[label])
+      }
+    }
+
+    var total = function total(label) {
+      return sum(timings[label] || [])
+    }
+
+    var average = function average(label) {
+      return mean(timings[label] || [])
+    }
+
+    var count = function count(label) {
+      return (timings[label] || []).length
+    }
+
+    var totals = function totals() {
+      return Object.keys(timings).map(function(label) {
+        return {
+          label: label,
+          total: total(label),
+        }
+      })
+    }
+
+    return {
+      time: time,
+      timeEnd: timeEnd,
+      timings: timings,
+      average: average,
+      count: count,
+      total: total,
+      totals: totals,
+    }
+  }
+
   /**
    * Returns the height of a given element.
    *
@@ -10994,6 +10378,411 @@
 
   function qsa(element, selector) {
     return toArray(element.querySelectorAll(selector))
+  }
+
+  var MILI = 'milliseconds',
+    SECONDS = 'seconds',
+    MINUTES = 'minutes',
+    HOURS = 'hours',
+    DAY = 'day',
+    WEEK = 'week',
+    MONTH = 'month',
+    YEAR = 'year',
+    DECADE = 'decade',
+    CENTURY = 'century'
+
+  var multiplierMilli = {
+    milliseconds: 1,
+    seconds: 1000,
+    minutes: 60 * 1000,
+    hours: 60 * 60 * 1000,
+    day: 24 * 60 * 60 * 1000,
+    week: 7 * 24 * 60 * 60 * 1000,
+  }
+
+  var multiplierMonth = {
+    month: 1,
+    year: 12,
+    decade: 10 * 12,
+    century: 100 * 12,
+  }
+
+  function daysOf(year) {
+    return [31, daysInFeb(year), 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+  }
+
+  function daysInFeb(year) {
+    return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0 ? 29 : 28
+  }
+
+  function add(d, num, unit) {
+    d = new Date(d)
+
+    switch (unit) {
+      case MILI:
+      case SECONDS:
+      case MINUTES:
+      case HOURS:
+      case DAY:
+      case WEEK:
+        return addMillis(d, num * multiplierMilli[unit])
+      case MONTH:
+      case YEAR:
+      case DECADE:
+      case CENTURY:
+        return addMonths(d, num * multiplierMonth[unit])
+    }
+
+    throw new TypeError('Invalid units: "' + unit + '"')
+  }
+
+  function addMillis(d, num) {
+    var nextDate = new Date(+d + num)
+
+    return solveDST(d, nextDate)
+  }
+
+  function addMonths(d, num) {
+    var year = d.getFullYear(),
+      month = d.getMonth(),
+      day = d.getDate(),
+      totalMonths = year * 12 + month + num,
+      nextYear = Math.trunc(totalMonths / 12),
+      nextMonth = totalMonths % 12,
+      nextDay = Math.min(day, daysOf(nextYear)[nextMonth])
+
+    var nextDate = new Date(d)
+    nextDate.setFullYear(nextYear)
+
+    // To avoid a bug when sets the Feb month
+    // with a date > 28 or date > 29 (leap year)
+    nextDate.setDate(1)
+
+    nextDate.setMonth(nextMonth)
+    nextDate.setDate(nextDay)
+
+    return nextDate
+  }
+
+  function solveDST(currentDate, nextDate) {
+    var currentOffset = currentDate.getTimezoneOffset(),
+      nextOffset = nextDate.getTimezoneOffset()
+
+    // if is DST, add the difference in minutes
+    // else the difference is zero
+    var diffMinutes = nextOffset - currentOffset
+
+    return new Date(+nextDate + diffMinutes * multiplierMilli['minutes'])
+  }
+
+  function subtract(d, num, unit) {
+    return add(d, -num, unit)
+  }
+
+  function startOf(d, unit, firstOfWeek) {
+    d = new Date(d)
+
+    switch (unit) {
+      case CENTURY:
+      case DECADE:
+      case YEAR:
+        d = month(d, 0)
+      case MONTH:
+        d = date(d, 1)
+      case WEEK:
+      case DAY:
+        d = hours(d, 0)
+      case HOURS:
+        d = minutes(d, 0)
+      case MINUTES:
+        d = seconds(d, 0)
+      case SECONDS:
+        d = milliseconds(d, 0)
+    }
+
+    if (unit === DECADE) d = subtract(d, year(d) % 10, 'year')
+
+    if (unit === CENTURY) d = subtract(d, year(d) % 100, 'year')
+
+    if (unit === WEEK) d = weekday(d, 0, firstOfWeek)
+
+    return d
+  }
+
+  function endOf(d, unit, firstOfWeek) {
+    d = new Date(d)
+    d = startOf(d, unit, firstOfWeek)
+    switch (unit) {
+      case CENTURY:
+      case DECADE:
+      case YEAR:
+      case MONTH:
+      case WEEK:
+        d = add(d, 1, unit)
+        d = subtract(d, 1, DAY)
+        d.setHours(23, 59, 59, 999)
+        break
+      case DAY:
+        d.setHours(23, 59, 59, 999)
+        break
+      case HOURS:
+      case MINUTES:
+      case SECONDS:
+        d = add(d, 1, unit)
+        d = subtract(d, 1, MILI)
+    }
+    return d
+  }
+
+  var eq$1 = createComparer(function(a, b) {
+    return a === b
+  })
+  var gt = createComparer(function(a, b) {
+    return a > b
+  })
+  var gte = createComparer(function(a, b) {
+    return a >= b
+  })
+  var lt = createComparer(function(a, b) {
+    return a < b
+  })
+  var lte = createComparer(function(a, b) {
+    return a <= b
+  })
+
+  function min$1() {
+    return new Date(Math.min.apply(Math, arguments))
+  }
+
+  function max$1() {
+    return new Date(Math.max.apply(Math, arguments))
+  }
+
+  function inRange(day, min, max, unit) {
+    unit = unit || 'day'
+
+    return (!min || gte(day, min, unit)) && (!max || lte(day, max, unit))
+  }
+
+  var milliseconds = createAccessor('Milliseconds')
+  var seconds = createAccessor('Seconds')
+  var minutes = createAccessor('Minutes')
+  var hours = createAccessor('Hours')
+  var day = createAccessor('Day')
+  var date = createAccessor('Date')
+  var month = createAccessor('Month')
+  var year = createAccessor('FullYear')
+
+  function weekday(d, val, firstDay) {
+    var w = (day(d) + 7 - (firstDay || 0)) % 7
+
+    return val === undefined ? w : add(d, val - w, DAY)
+  }
+
+  function createAccessor(method) {
+    var hourLength = (function(method) {
+      switch (method) {
+        case 'Milliseconds':
+          return 3600000
+        case 'Seconds':
+          return 3600
+        case 'Minutes':
+          return 60
+        case 'Hours':
+          return 1
+        default:
+          return null
+      }
+    })(method)
+
+    return function(d, val) {
+      if (val === undefined) return d['get' + method]()
+
+      var dateOut = new Date(d)
+      dateOut['set' + method](val)
+
+      if (
+        hourLength &&
+        dateOut['get' + method]() != val &&
+        (method === 'Hours' ||
+          (val >= hourLength &&
+            dateOut.getHours() - d.getHours() < Math.floor(val / hourLength)))
+      ) {
+        //Skip DST hour, if it occurs
+        dateOut['set' + method](val + hourLength)
+      }
+
+      return dateOut
+    }
+  }
+
+  function createComparer(operator) {
+    return function(a, b, unit) {
+      return operator(+startOf(a, unit), +startOf(b, unit))
+    }
+  }
+
+  /* eslint no-fallthrough: off */
+  var MILLI = {
+    seconds: 1000,
+    minutes: 1000 * 60,
+    hours: 1000 * 60 * 60,
+    day: 1000 * 60 * 60 * 24,
+  }
+  function firstVisibleDay(date, localizer) {
+    var firstOfMonth = startOf$1(date, 'month')
+    return startOf$1(firstOfMonth, 'week', localizer.startOfWeek())
+  }
+  function lastVisibleDay(date, localizer) {
+    var endOfMonth = endOf(date, 'month')
+    return endOf(endOfMonth, 'week', localizer.startOfWeek())
+  }
+  function visibleDays(date, localizer) {
+    var current = firstVisibleDay(date, localizer),
+      last = lastVisibleDay(date, localizer),
+      days = []
+
+    while (lte(current, last, 'day')) {
+      days.push(current)
+      current = add(current, 1, 'day')
+    }
+
+    return days
+  }
+  function ceil(date, unit) {
+    var floor = startOf$1(date, unit)
+    return eq$1(floor, date) ? floor : add(floor, 1, unit)
+  }
+  function range(start, end, unit) {
+    if (unit === void 0) {
+      unit = 'day'
+    }
+
+    var current = start,
+      days = []
+
+    while (lte(current, end, unit)) {
+      days.push(current)
+      current = add(current, 1, unit)
+    }
+
+    return days
+  }
+  function merge(date, time) {
+    if (time == null && date == null) return null
+    if (time == null) time = new Date()
+    if (date == null) date = new Date()
+    if (typeof date === 'number') time = new Date(date)
+    if (typeof time === 'number') time = new Date(time)
+    date = startOf$1(date, 'day')
+    date = hours(date, hours(time))
+    date = minutes(date, minutes(time))
+    date = seconds(date, seconds(time))
+    return milliseconds(date, milliseconds(time))
+  }
+  function isJustDate(date) {
+    return (
+      hours(date) === 0 &&
+      minutes(date) === 0 &&
+      seconds(date) === 0 &&
+      milliseconds(date) === 0
+    )
+  }
+  var startOf$1 = function startOf(d, unit) {
+    if (unit === 'week') return d / 604800000
+    if (unit === 'day') return d / 86400000
+    if (unit === 'hour') return d / 3600000
+    if (unit === 'minutes') return d / 60000
+    if (unit === 'seconds') return d / 1000
+    if (unit === 'milliseconds') return d
+  }
+  function diff(dateA, dateB, unit) {
+    if (!unit || unit === 'milliseconds') return Math.abs(+dateA - +dateB) // the .round() handles an edge case
+    // with DST where the total won't be exact
+    // since one day in the range may be shorter/longer by an hour
+
+    return Math.round(
+      Math.abs(
+        startOf$1(dateA, unit) / MILLI[unit] -
+          startOf$1(dateB, unit) / MILLI[unit]
+      )
+    )
+  }
+
+  function isSelected(event, selected) {
+    if (!event || selected == null) return false
+    return [].concat(selected).indexOf(event) !== -1
+  }
+  function slotWidth(rowBox, slots) {
+    var rowWidth = rowBox.right - rowBox.left
+    var cellWidth = rowWidth / slots
+    return cellWidth
+  }
+  function getSlotAtX(rowBox, x, rtl, slots) {
+    var cellWidth = slotWidth(rowBox, slots)
+    return rtl
+      ? slots - 1 - Math.floor((x - rowBox.left) / cellWidth)
+      : Math.floor((x - rowBox.left) / cellWidth)
+  }
+  function pointInBox(box, _ref) {
+    var x = _ref.x,
+      y = _ref.y
+    return y >= box.top && y <= box.bottom && x >= box.left && x <= box.right
+  }
+  function dateCellSelection(start, rowBox, box, slots, rtl) {
+    var startIdx = -1
+    var endIdx = -1
+    var lastSlotIdx = slots - 1
+    var cellWidth = slotWidth(rowBox, slots) // cell under the mouse
+
+    var currentSlot = getSlotAtX(rowBox, box.x, rtl, slots) // Identify row as either the initial row
+    // or the row under the current mouse point
+
+    var isCurrentRow = rowBox.top < box.y && rowBox.bottom > box.y
+    var isStartRow = rowBox.top < start.y && rowBox.bottom > start.y // this row's position relative to the start point
+
+    var isAboveStart = start.y > rowBox.bottom
+    var isBelowStart = rowBox.top > start.y
+    var isBetween = box.top < rowBox.top && box.bottom > rowBox.bottom // this row is between the current and start rows, so entirely selected
+
+    if (isBetween) {
+      startIdx = 0
+      endIdx = lastSlotIdx
+    }
+
+    if (isCurrentRow) {
+      if (isBelowStart) {
+        startIdx = 0
+        endIdx = currentSlot
+      } else if (isAboveStart) {
+        startIdx = currentSlot
+        endIdx = lastSlotIdx
+      }
+    }
+
+    if (isStartRow) {
+      // select the cell under the initial point
+      startIdx = endIdx = rtl
+        ? lastSlotIdx - Math.floor((start.x - rowBox.left) / cellWidth)
+        : Math.floor((start.x - rowBox.left) / cellWidth)
+
+      if (isCurrentRow) {
+        if (currentSlot < startIdx) startIdx = currentSlot
+        else endIdx = currentSlot //select current range
+      } else if (start.y < box.y) {
+        // the current row is below start row
+        // select cells to the right of the start cell
+        endIdx = lastSlotIdx
+      } else {
+        // select cells to the left of the start cell
+        startIdx = 0
+      }
+    }
+
+    return {
+      startIdx: startIdx,
+      endIdx: endIdx,
+    }
   }
 
   var matchesImpl
@@ -11844,6 +11633,138 @@
     resourceId: propTypes.any,
   }
 
+  var _excluded = [
+    'style',
+    'className',
+    'event',
+    'selected',
+    'isAllDay',
+    'onSelect',
+    'onDoubleClick',
+    'onKeyPress',
+    'localizer',
+    'continuesPrior',
+    'continuesAfter',
+    'accessors',
+    'getters',
+    'children',
+    'components',
+    'slotStart',
+    'slotEnd',
+  ]
+
+  var EventCell = /*#__PURE__*/ (function(_React$Component) {
+    _inheritsLoose(EventCell, _React$Component)
+
+    function EventCell() {
+      return _React$Component.apply(this, arguments) || this
+    }
+
+    var _proto = EventCell.prototype
+
+    _proto.render = function render() {
+      var _this$props = this.props,
+        style = _this$props.style,
+        className = _this$props.className,
+        event = _this$props.event,
+        selected = _this$props.selected,
+        isAllDay = _this$props.isAllDay,
+        onSelect = _this$props.onSelect,
+        _onDoubleClick = _this$props.onDoubleClick,
+        _onKeyPress = _this$props.onKeyPress,
+        localizer = _this$props.localizer,
+        continuesPrior = _this$props.continuesPrior,
+        continuesAfter = _this$props.continuesAfter,
+        accessors = _this$props.accessors,
+        getters = _this$props.getters,
+        children = _this$props.children,
+        _this$props$component = _this$props.components,
+        Event = _this$props$component.event,
+        EventWrapper = _this$props$component.eventWrapper,
+        slotStart = _this$props.slotStart,
+        slotEnd = _this$props.slotEnd,
+        props = _objectWithoutPropertiesLoose(_this$props, _excluded)
+
+      delete props.resizable
+      var title = accessors.title(event)
+      var tooltip = accessors.tooltip(event)
+      var end = accessors.end(event)
+      var start = accessors.start(event)
+      var allDay = accessors.allDay(event)
+      var showAsAllDay =
+        isAllDay || allDay || diff(start, ceil(end, 'day'), 'day') > 1
+      var userProps = getters.eventProp(event, start, end, selected)
+      var content = /*#__PURE__*/ React__default.createElement(
+        'div',
+        {
+          className: 'rbc-event-content',
+          title: tooltip || undefined,
+        },
+        Event
+          ? /*#__PURE__*/ React__default.createElement(Event, {
+              event: event,
+              continuesPrior: continuesPrior,
+              continuesAfter: continuesAfter,
+              title: title,
+              isAllDay: allDay,
+              localizer: localizer,
+              slotStart: slotStart,
+              slotEnd: slotEnd,
+            })
+          : title
+      )
+      return /*#__PURE__*/ React__default.createElement(
+        EventWrapper,
+        _extends({}, this.props, {
+          type: 'date',
+        }),
+        /*#__PURE__*/ React__default.createElement(
+          'div',
+          _extends({}, props, {
+            tabIndex: 0,
+            style: _extends({}, userProps.style, style),
+            className: clsx('rbc-event', className, userProps.className, {
+              'rbc-selected': selected,
+              'rbc-event-allday': showAsAllDay,
+              'rbc-event-continues-prior': continuesPrior,
+              'rbc-event-continues-after': continuesAfter,
+            }),
+            onClick: function onClick(e) {
+              return onSelect && onSelect(event, e)
+            },
+            onDoubleClick: function onDoubleClick(e) {
+              return _onDoubleClick && _onDoubleClick(event, e)
+            },
+            onKeyPress: function onKeyPress(e) {
+              return _onKeyPress && _onKeyPress(event, e)
+            },
+          }),
+          typeof children === 'function' ? children(content) : content
+        )
+      )
+    }
+
+    return EventCell
+  })(React__default.Component)
+
+  EventCell.propTypes = {
+    event: propTypes.object.isRequired,
+    slotStart: propTypes.instanceOf(Date),
+    slotEnd: propTypes.instanceOf(Date),
+    resizable: propTypes.bool,
+    selected: propTypes.bool,
+    isAllDay: propTypes.bool,
+    continuesPrior: propTypes.bool,
+    continuesAfter: propTypes.bool,
+    accessors: propTypes.object.isRequired,
+    components: propTypes.object.isRequired,
+    getters: propTypes.object.isRequired,
+    localizer: propTypes.object,
+    onSelect: propTypes.func,
+    onDoubleClick: propTypes.func,
+    onKeyPress: propTypes.func,
+  }
+
   /* eslint-disable react/prop-types */
 
   var EventRowMixin = {
@@ -12054,8 +11975,8 @@
       last = _endOfRange.last
 
     var slots = diff(first, last, 'day')
-    var start = max(startOf(accessors.start(event), 'day'), first)
-    var end = min(ceil(accessors.end(event), 'day'), last)
+    var start = max$1(startOf$1(accessors.start(event), 'day'), first)
+    var end = min$1(ceil(accessors.end(event), 'day'), last)
     var padding = findIndex(range, function(x) {
       return eq$1(x, start, 'day')
     })
@@ -12105,14 +12026,22 @@
       extra: extra,
     }
   }
-  function inRange$1(e, start, end, accessors) {
-    var eStart = startOf(accessors.start(e), 'day')
-    var eEnd = accessors.end(e)
-    var startsBeforeEnd = lte(eStart, end, 'day') // when the event is zero duration we need to handle a bit differently
+  function inRange$1(e, start, end, accessors, timer) {
+    timer && timer.time('inRange')
+    var startTimestamp = accessors.start(e)
+    var endTimestamp = accessors.end(e)
+    var startsBeforeEnd =
+      startOf$1(startTimestamp, 'day') <= startOf$1(end, 'day')
+    var endsAfterStart =
+      startOf$1(start, 'minutes') <= startOf$1(endTimestamp, 'minutes') // let eStart = dates.startOf(accessors.start(e), 'day')
+    // let eEnd = accessors.end(e)
+    // let startsBeforeEndOriginal = dates.lte(eStart, end, 'day')
+    // // when the event is zero duration we need to handle a bit differently
+    // let endsAfterStartOriginal = !dates.eq(eStart, eEnd, 'minutes')
+    //   ? dates.gt(eEnd, start, 'minutes')
+    //   : dates.gte(eEnd, start, 'minutes')
 
-    var endsAfterStart = !eq$1(eStart, eEnd, 'minutes')
-      ? gt(eEnd, start, 'minutes')
-      : gte(eEnd, start, 'minutes')
+    timer && timer.timeEnd('inRange')
     return startsBeforeEnd && endsAfterStart
   }
   function segsOverlap(seg, otherSegs) {
@@ -12122,8 +12051,10 @@
   }
   function sortEvents(evtA, evtB, accessors) {
     var startSort =
-      +startOf(accessors.start(evtA), 'day') -
-      +startOf(accessors.start(evtB), 'day')
+      +startOf$1(accessors.start(evtA), 'day') -
+      +startOf$1(accessors.start(evtB), 'day') // sort by start Day first
+
+    if (startSort) return startSort
     var durA = diff(
       accessors.start(evtA),
       ceil(accessors.end(evtA), 'day'),
@@ -12135,7 +12066,6 @@
       'day'
     )
     return (
-      startSort || // sort by start Day first
       Math.max(durB, 1) - Math.max(durA, 1) || // events spanning multiple days go first
       !!accessors.allDay(evtB) - !!accessors.allDay(evtA) || // then allDay single day events
       +accessors.start(evtA) - +accessors.start(evtB)
@@ -12812,22 +12742,6 @@
     maxRows: Infinity,
   }
 
-  var Header = function Header(_ref) {
-    var label = _ref.label
-    return /*#__PURE__*/ React__default.createElement(
-      'span',
-      {
-        role: 'columnheader',
-        'aria-sort': 'none',
-      },
-      label
-    )
-  }
-
-  Header.propTypes = {
-    label: propTypes.node,
-  }
-
   var DateHeader = function DateHeader(_ref) {
     var label = _ref.label,
       drilldownView = _ref.drilldownView,
@@ -12856,12 +12770,183 @@
     isOffRange: propTypes.bool,
   }
 
+  var Header = function Header(_ref) {
+    var label = _ref.label
+    return /*#__PURE__*/ React__default.createElement(
+      'span',
+      {
+        role: 'columnheader',
+        'aria-sort': 'none',
+      },
+      label
+    )
+  }
+
+  Header.propTypes = {
+    label: propTypes.node,
+  }
+
+  var Popup = /*#__PURE__*/ (function(_React$Component) {
+    _inheritsLoose(Popup, _React$Component)
+
+    function Popup() {
+      return _React$Component.apply(this, arguments) || this
+    }
+
+    var _proto = Popup.prototype
+
+    _proto.componentDidMount = function componentDidMount() {
+      var _this$props = this.props,
+        _this$props$popupOffs = _this$props.popupOffset,
+        popupOffset =
+          _this$props$popupOffs === void 0 ? 5 : _this$props$popupOffs,
+        popperRef = _this$props.popperRef,
+        _getOffset = offset(popperRef.current),
+        top = _getOffset.top,
+        left = _getOffset.left,
+        width = _getOffset.width,
+        height = _getOffset.height,
+        viewBottom = window.innerHeight + getScrollTop(window),
+        viewRight = window.innerWidth + getScrollLeft(window),
+        bottom = top + height,
+        right = left + width
+
+      if (bottom > viewBottom || right > viewRight) {
+        var topOffset, leftOffset
+        if (bottom > viewBottom)
+          topOffset = bottom - viewBottom + (popupOffset.y || +popupOffset || 0)
+        if (right > viewRight)
+          leftOffset = right - viewRight + (popupOffset.x || +popupOffset || 0)
+        this.setState({
+          topOffset: topOffset,
+          leftOffset: leftOffset,
+        }) //eslint-disable-line
+      }
+    }
+
+    _proto.render = function render() {
+      var _this = this
+
+      var _this$props2 = this.props,
+        events = _this$props2.events,
+        selected = _this$props2.selected,
+        getters = _this$props2.getters,
+        accessors = _this$props2.accessors,
+        components = _this$props2.components,
+        onSelect = _this$props2.onSelect,
+        onDoubleClick = _this$props2.onDoubleClick,
+        onKeyPress = _this$props2.onKeyPress,
+        slotStart = _this$props2.slotStart,
+        slotEnd = _this$props2.slotEnd,
+        localizer = _this$props2.localizer,
+        popperRef = _this$props2.popperRef
+      var width = this.props.position.width,
+        topOffset = (this.state || {}).topOffset || 0,
+        leftOffset = (this.state || {}).leftOffset || 0
+      var style = {
+        top: -topOffset,
+        left: -leftOffset,
+        minWidth: width + width / 2,
+      }
+      return /*#__PURE__*/ React__default.createElement(
+        'div',
+        {
+          style: _extends({}, this.props.style, style),
+          className: 'rbc-overlay',
+          ref: popperRef,
+        },
+        /*#__PURE__*/ React__default.createElement(
+          'div',
+          {
+            className: 'rbc-overlay-header',
+          },
+          localizer.format(slotStart, 'dayHeaderFormat')
+        ),
+        events.map(function(event, idx) {
+          return /*#__PURE__*/ React__default.createElement(EventCell, {
+            key: idx,
+            type: 'popup',
+            event: event,
+            getters: getters,
+            onSelect: onSelect,
+            accessors: accessors,
+            components: components,
+            onDoubleClick: onDoubleClick,
+            onKeyPress: onKeyPress,
+            continuesPrior: lt(accessors.end(event), slotStart, 'day'),
+            continuesAfter: gte(accessors.start(event), slotEnd, 'day'),
+            slotStart: slotStart,
+            slotEnd: slotEnd,
+            selected: isSelected(event, selected),
+            draggable: true,
+            onDragStart: function onDragStart() {
+              return _this.props.handleDragStart(event)
+            },
+            onDragEnd: function onDragEnd() {
+              return _this.props.show()
+            },
+          })
+        })
+      )
+    }
+
+    return Popup
+  })(React__default.Component)
+
+  Popup.propTypes = {
+    position: propTypes.object,
+    popupOffset: propTypes.oneOfType([
+      propTypes.number,
+      propTypes.shape({
+        x: propTypes.number,
+        y: propTypes.number,
+      }),
+    ]),
+    events: propTypes.array,
+    selected: propTypes.object,
+    accessors: propTypes.object.isRequired,
+    components: propTypes.object.isRequired,
+    getters: propTypes.object.isRequired,
+    localizer: propTypes.object.isRequired,
+    onSelect: propTypes.func,
+    onDoubleClick: propTypes.func,
+    onKeyPress: propTypes.func,
+    handleDragStart: propTypes.func,
+    show: propTypes.func,
+    slotStart: propTypes.instanceOf(Date),
+    slotEnd: propTypes.number,
+    popperRef: propTypes.oneOfType([
+      propTypes.func,
+      propTypes.shape({
+        current: propTypes.Element,
+      }),
+    ]),
+  }
+  /**
+   * The Overlay component, of react-overlays, creates a ref that is passed to the Popup, and
+   * requires proper ref forwarding to be used without error
+   */
+
+  var Popup$1 = /*#__PURE__*/ React__default.forwardRef(function(props, ref) {
+    return /*#__PURE__*/ React__default.createElement(
+      Popup,
+      _extends(
+        {
+          popperRef: ref,
+        },
+        props
+      )
+    )
+  })
+
   var _excluded$1 = ['date', 'className']
+  var timer
 
   var eventsForWeek = function eventsForWeek(evts, start, end, accessors) {
-    return evts.filter(function(e) {
-      return inRange$1(e, start, end, accessors)
+    var result = evts.filter(function(e) {
+      return inRange$1(e, start, end, accessors, timer)
     })
+    return result
   }
 
   var MonthView = /*#__PURE__*/ (function(_React$Component) {
@@ -12902,6 +12987,7 @@
         var _this$state = _this.state,
           needLimitMeasure = _this$state.needLimitMeasure,
           rowLimit = _this$state.rowLimit
+        timer.time('eventsForWeek')
         events = eventsForWeek(
           events,
           week[0],
@@ -12911,6 +12997,7 @@
         events.sort(function(a, b) {
           return sortEvents(a, b, accessors)
         })
+        timer.timeEnd('eventsForWeek')
         return /*#__PURE__*/ React__default.createElement(DateContentRow, {
           key: weekIdx,
           ref: weekIdx === 0 ? _this.slotRowRef : undefined,
@@ -13080,6 +13167,7 @@
         rowLimit: 5,
         needLimitMeasure: true,
       }
+      timer = createTimer()
       return _this
     }
 
@@ -13117,10 +13205,22 @@
     }
 
     _proto.componentDidUpdate = function componentDidUpdate() {
+      console.log('did updated', {
+        inRangeAverage: timer.average('inRange'),
+        inRangeCount: timer.count('inRange'),
+        eventsForWeekAverage: timer.average('eventsForWeek'),
+        eventsForWeekCount: timer.count('eventsForWeek'),
+      })
       if (this.state.needLimitMeasure) this.measureRowLimit(this.props)
     }
 
     _proto.componentWillUnmount = function componentWillUnmount() {
+      console.log('will umount', {
+        inRangeAverage: timer.average('inRange'),
+        inRangeCount: timer.count('inRange'),
+        eventsForWeekAverage: timer.average('eventsForWeek'),
+        eventsForWeekCount: timer.count('eventsForWeek'),
+      })
       window.removeEventListener('resize', this._resizeListener, false)
     }
 
@@ -14202,14 +14302,18 @@
   ])
 
   var getDstOffset = function getDstOffset(start, end) {
-    return start.getTimezoneOffset() - end.getTimezoneOffset()
+    var s = start
+    var e = end
+    if (typeof start === 'number') s = new Date(start)
+    if (typeof end === 'number') e = new Date(end)
+    return s.getTimezoneOffset() - e.getTimezoneOffset()
   }
 
   var getKey$1 = function getKey(min, max, step, slots) {
     return (
       '' +
-      +startOf(min, 'minutes') +
-      ('' + +startOf(max, 'minutes')) +
+      +startOf$1(min, 'minutes') +
+      ('' + +startOf$1(max, 'minutes')) +
       (step + '-' + slots)
     )
   }
@@ -14222,7 +14326,7 @@
     var key = getKey$1(start, end, step, timeslots) // if the start is on a DST-changing day but *after* the moment of DST
     // transition we need to add those extra minutes to our minutesFromMidnight
 
-    var daystart = startOf(start, 'day')
+    var daystart = startOf$1(start, 'day')
     var daystartdstoffset = getDstOffset(daystart, start)
     var totalMin = 1 + diff(start, end, 'minutes') + getDstOffset(start, end)
     var minutesFromMidnight =
@@ -14324,8 +14428,8 @@
         return gt(merge(end, date), end, 'minutes')
       },
       getRange: function getRange(rangeStart, rangeEnd, ignoreMin, ignoreMax) {
-        if (!ignoreMin) rangeStart = min(end, max(start, rangeStart))
-        if (!ignoreMax) rangeEnd = min(end, max(start, rangeEnd))
+        if (!ignoreMin) rangeStart = min$1(end, max$1(start, rangeStart))
+        if (!ignoreMax) rangeEnd = min$1(end, max$1(start, rangeEnd))
         var rangeStartMin = positionFromDate(rangeStart)
         var rangeEndMin = positionFromDate(rangeEnd)
         var top =
@@ -14510,8 +14614,8 @@
           }
 
           var selectRange = _this.slotMetrics.getRange(
-            min(initialSlot, currentSlot),
-            max(initialSlot, currentSlot)
+            min$1(initialSlot, currentSlot),
+            max$1(initialSlot, currentSlot)
           )
 
           return _extends({}, selectRange, {
@@ -15590,7 +15694,7 @@
         min = _props.min,
         max = _props.max,
         scrollToTime = _props.scrollToTime
-      var diffMillis = scrollToTime - startOf(scrollToTime, 'day')
+      var diffMillis = scrollToTime - startOf$1(scrollToTime, 'day')
       var totalMillis = diff(max, min)
       this._scrollRatio = diffMillis / totalMillis
     }
@@ -15634,9 +15738,9 @@
   TimeGrid.defaultProps = {
     step: 30,
     timeslots: 2,
-    min: startOf(new Date(), 'day'),
+    min: startOf$1(new Date(), 'day'),
     max: endOf(new Date(), 'day'),
-    scrollToTime: startOf(new Date(), 'day'),
+    scrollToTime: startOf$1(new Date(), 'day'),
   }
 
   var _excluded$3 = ['date']
@@ -15673,7 +15777,7 @@
   }
 
   Day.range = function(date) {
-    return [startOf(date, 'day')]
+    return [startOf$1(date, 'day')]
   }
 
   Day.navigate = function(date, action) {
@@ -15744,7 +15848,7 @@
   Week.range = function(date, _ref) {
     var localizer = _ref.localizer
     var firstOfWeek = localizer.startOfWeek()
-    var start = startOf(date, 'week', firstOfWeek)
+    var start = startOf$1(date, 'week')
     var end = endOf(date, 'week', firstOfWeek)
     return range(start, end)
   }
@@ -15946,7 +16050,7 @@
       var Event = components.event,
         AgendaDate = components.date
       events = events.filter(function(e) {
-        return inRange$1(e, startOf(day, 'day'), endOf(day, 'day'), accessors)
+        return inRange$1(e, startOf$1(day, 'day'), endOf(day, 'day'), accessors)
       })
       return events.map(function(event, idx) {
         var title = accessors.title(event)
@@ -16078,7 +16182,7 @@
     events = events.filter(function(event) {
       return inRange$1(
         event,
-        startOf(date, 'day'),
+        startOf$1(date, 'day'),
         endOf(end, 'day'),
         accessors
       )
