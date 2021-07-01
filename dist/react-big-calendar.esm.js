@@ -11,40 +11,39 @@ import React, { Component, useRef, useEffect } from 'react'
 import { uncontrollable } from 'uncontrollable'
 import invariant from 'invariant'
 import _assertThisInitialized from '@babel/runtime/helpers/esm/assertThisInitialized'
+import { request } from 'dom-helpers/animationFrame'
+import getPosition from 'dom-helpers/position'
+import chunk from 'lodash-es/chunk'
 import { findDOMNode } from 'react-dom'
+import Overlay from 'react-overlays/Overlay'
+import getHeight from 'dom-helpers/height'
+import qsa from 'dom-helpers/querySelectorAll'
 import {
   eq,
   add,
-  startOf,
   endOf,
   lte,
   hours,
   minutes,
   seconds,
   milliseconds,
-  lt,
-  gte,
   month,
   max,
   min,
+  lt,
+  gte,
   gt,
   inRange as inRange$1,
 } from 'date-arithmetic'
-import chunk from 'lodash-es/chunk'
-import getPosition from 'dom-helpers/position'
-import { request } from 'dom-helpers/animationFrame'
-import getOffset from 'dom-helpers/offset'
-import getScrollTop from 'dom-helpers/scrollTop'
-import getScrollLeft from 'dom-helpers/scrollLeft'
-import Overlay from 'react-overlays/Overlay'
-import getHeight from 'dom-helpers/height'
-import qsa from 'dom-helpers/querySelectorAll'
 import closest from 'dom-helpers/closest'
 import contains from 'dom-helpers/contains'
 import listen from 'dom-helpers/listen'
 import findIndex from 'lodash-es/findIndex'
 import range$1 from 'lodash-es/range'
 import memoize from 'memoize-one'
+import getOffset from 'dom-helpers/offset'
+import getScrollTop from 'dom-helpers/scrollTop'
+import getScrollLeft from 'dom-helpers/scrollLeft'
 import _createClass from '@babel/runtime/helpers/esm/createClass'
 import sortBy from 'lodash-es/sortBy'
 import addClass from 'dom-helpers/addClass'
@@ -309,6 +308,69 @@ function messages(msgs) {
   return _extends({}, defaultMessages, msgs)
 }
 
+var sum = function sum(x) {
+  var s = 0
+
+  for (var i = 0; i < x.length; i++) {
+    s += x[i]
+  }
+
+  return s
+}
+
+var mean = function mean(x) {
+  return sum(x) / x.length
+}
+
+var createTimer = function createTimer() {
+  var started = {}
+  var timings = {}
+
+  var time = function time(label) {
+    started[label] = performance.now()
+  }
+
+  var timeEnd = function timeEnd(label) {
+    var end = performance.now()
+
+    if (started[label]) {
+      timings[label] = timings[label] || []
+      timings[label].push(end - started[label])
+    }
+  }
+
+  var total = function total(label) {
+    return sum(timings[label] || [])
+  }
+
+  var average = function average(label) {
+    return mean(timings[label] || [])
+  }
+
+  var count = function count(label) {
+    return (timings[label] || []).length
+  }
+
+  var totals = function totals() {
+    return Object.keys(timings).map(function(label) {
+      return {
+        label: label,
+        total: total(label),
+      }
+    })
+  }
+
+  return {
+    time: time,
+    timeEnd: timeEnd,
+    timings: timings,
+    average: average,
+    count: count,
+    total: total,
+    totals: totals,
+  }
+}
+
 /* eslint no-fallthrough: off */
 var MILLI = {
   seconds: 1000,
@@ -359,6 +421,8 @@ function merge(date, time) {
   if (time == null && date == null) return null
   if (time == null) time = new Date()
   if (date == null) date = new Date()
+  if (typeof date === 'number') time = new Date(date)
+  if (typeof time === 'number') time = new Date(time)
   date = startOf(date, 'day')
   date = hours(date, hours(time))
   date = minutes(date, minutes(time))
@@ -373,6 +437,14 @@ function isJustDate(date) {
     milliseconds(date) === 0
   )
 }
+var startOf = function startOf(d, unit) {
+  if (unit === 'week') return d / 604800000
+  if (unit === 'day') return d / 86400000
+  if (unit === 'hour') return d / 3600000
+  if (unit === 'minutes') return d / 60000
+  if (unit === 'seconds') return d / 1000
+  if (unit === 'milliseconds') return d
+}
 function diff(dateA, dateB, unit) {
   if (!unit || unit === 'milliseconds') return Math.abs(+dateA - +dateB) // the .round() handles an edge case
   // with DST where the total won't be exact
@@ -380,145 +452,10 @@ function diff(dateA, dateB, unit) {
 
   return Math.round(
     Math.abs(
-      +startOf(dateA, unit) / MILLI[unit] - +startOf(dateB, unit) / MILLI[unit]
+      startOf(dateA, unit) / MILLI[unit] - startOf(dateB, unit) / MILLI[unit]
     )
   )
 }
-
-var _excluded = [
-  'style',
-  'className',
-  'event',
-  'selected',
-  'isAllDay',
-  'onSelect',
-  'onDoubleClick',
-  'onKeyPress',
-  'localizer',
-  'continuesPrior',
-  'continuesAfter',
-  'accessors',
-  'getters',
-  'children',
-  'components',
-  'slotStart',
-  'slotEnd',
-]
-
-var EventCell = /*#__PURE__*/ (function(_React$Component) {
-  _inheritsLoose(EventCell, _React$Component)
-
-  function EventCell() {
-    return _React$Component.apply(this, arguments) || this
-  }
-
-  var _proto = EventCell.prototype
-
-  _proto.render = function render() {
-    var _this$props = this.props,
-      style = _this$props.style,
-      className = _this$props.className,
-      event = _this$props.event,
-      selected = _this$props.selected,
-      isAllDay = _this$props.isAllDay,
-      onSelect = _this$props.onSelect,
-      _onDoubleClick = _this$props.onDoubleClick,
-      _onKeyPress = _this$props.onKeyPress,
-      localizer = _this$props.localizer,
-      continuesPrior = _this$props.continuesPrior,
-      continuesAfter = _this$props.continuesAfter,
-      accessors = _this$props.accessors,
-      getters = _this$props.getters,
-      children = _this$props.children,
-      _this$props$component = _this$props.components,
-      Event = _this$props$component.event,
-      EventWrapper = _this$props$component.eventWrapper,
-      slotStart = _this$props.slotStart,
-      slotEnd = _this$props.slotEnd,
-      props = _objectWithoutPropertiesLoose(_this$props, _excluded)
-
-    delete props.resizable
-    var title = accessors.title(event)
-    var tooltip = accessors.tooltip(event)
-    var end = accessors.end(event)
-    var start = accessors.start(event)
-    var allDay = accessors.allDay(event)
-    var showAsAllDay =
-      isAllDay || allDay || diff(start, ceil(end, 'day'), 'day') > 1
-    var userProps = getters.eventProp(event, start, end, selected)
-    var content = /*#__PURE__*/ React.createElement(
-      'div',
-      {
-        className: 'rbc-event-content',
-        title: tooltip || undefined,
-      },
-      Event
-        ? /*#__PURE__*/ React.createElement(Event, {
-            event: event,
-            continuesPrior: continuesPrior,
-            continuesAfter: continuesAfter,
-            title: title,
-            isAllDay: allDay,
-            localizer: localizer,
-            slotStart: slotStart,
-            slotEnd: slotEnd,
-          })
-        : title
-    )
-    return /*#__PURE__*/ React.createElement(
-      EventWrapper,
-      _extends({}, this.props, {
-        type: 'date',
-      }),
-      /*#__PURE__*/ React.createElement(
-        'div',
-        _extends({}, props, {
-          tabIndex: 0,
-          style: _extends({}, userProps.style, style),
-          className: clsx('rbc-event', className, userProps.className, {
-            'rbc-selected': selected,
-            'rbc-event-allday': showAsAllDay,
-            'rbc-event-continues-prior': continuesPrior,
-            'rbc-event-continues-after': continuesAfter,
-          }),
-          onClick: function onClick(e) {
-            return onSelect && onSelect(event, e)
-          },
-          onDoubleClick: function onDoubleClick(e) {
-            return _onDoubleClick && _onDoubleClick(event, e)
-          },
-          onKeyPress: function onKeyPress(e) {
-            return _onKeyPress && _onKeyPress(event, e)
-          },
-        }),
-        typeof children === 'function' ? children(content) : content
-      )
-    )
-  }
-
-  return EventCell
-})(React.Component)
-
-EventCell.propTypes =
-  process.env.NODE_ENV !== 'production'
-    ? {
-        event: PropTypes.object.isRequired,
-        slotStart: PropTypes.instanceOf(Date),
-        slotEnd: PropTypes.instanceOf(Date),
-        resizable: PropTypes.bool,
-        selected: PropTypes.bool,
-        isAllDay: PropTypes.bool,
-        continuesPrior: PropTypes.bool,
-        continuesAfter: PropTypes.bool,
-        accessors: PropTypes.object.isRequired,
-        components: PropTypes.object.isRequired,
-        getters: PropTypes.object.isRequired,
-        localizer: PropTypes.object,
-        onSelect: PropTypes.func,
-        onDoubleClick: PropTypes.func,
-        onKeyPress: PropTypes.func,
-      }
-    : {}
 
 function isSelected(event, selected) {
   if (!event || selected == null) return false
@@ -595,162 +532,6 @@ function dateCellSelection(start, rowBox, box, slots, rtl) {
     endIdx: endIdx,
   }
 }
-
-var Popup = /*#__PURE__*/ (function(_React$Component) {
-  _inheritsLoose(Popup, _React$Component)
-
-  function Popup() {
-    return _React$Component.apply(this, arguments) || this
-  }
-
-  var _proto = Popup.prototype
-
-  _proto.componentDidMount = function componentDidMount() {
-    var _this$props = this.props,
-      _this$props$popupOffs = _this$props.popupOffset,
-      popupOffset =
-        _this$props$popupOffs === void 0 ? 5 : _this$props$popupOffs,
-      popperRef = _this$props.popperRef,
-      _getOffset = getOffset(popperRef.current),
-      top = _getOffset.top,
-      left = _getOffset.left,
-      width = _getOffset.width,
-      height = _getOffset.height,
-      viewBottom = window.innerHeight + getScrollTop(window),
-      viewRight = window.innerWidth + getScrollLeft(window),
-      bottom = top + height,
-      right = left + width
-
-    if (bottom > viewBottom || right > viewRight) {
-      var topOffset, leftOffset
-      if (bottom > viewBottom)
-        topOffset = bottom - viewBottom + (popupOffset.y || +popupOffset || 0)
-      if (right > viewRight)
-        leftOffset = right - viewRight + (popupOffset.x || +popupOffset || 0)
-      this.setState({
-        topOffset: topOffset,
-        leftOffset: leftOffset,
-      }) //eslint-disable-line
-    }
-  }
-
-  _proto.render = function render() {
-    var _this = this
-
-    var _this$props2 = this.props,
-      events = _this$props2.events,
-      selected = _this$props2.selected,
-      getters = _this$props2.getters,
-      accessors = _this$props2.accessors,
-      components = _this$props2.components,
-      onSelect = _this$props2.onSelect,
-      onDoubleClick = _this$props2.onDoubleClick,
-      onKeyPress = _this$props2.onKeyPress,
-      slotStart = _this$props2.slotStart,
-      slotEnd = _this$props2.slotEnd,
-      localizer = _this$props2.localizer,
-      popperRef = _this$props2.popperRef
-    var width = this.props.position.width,
-      topOffset = (this.state || {}).topOffset || 0,
-      leftOffset = (this.state || {}).leftOffset || 0
-    var style = {
-      top: -topOffset,
-      left: -leftOffset,
-      minWidth: width + width / 2,
-    }
-    return /*#__PURE__*/ React.createElement(
-      'div',
-      {
-        style: _extends({}, this.props.style, style),
-        className: 'rbc-overlay',
-        ref: popperRef,
-      },
-      /*#__PURE__*/ React.createElement(
-        'div',
-        {
-          className: 'rbc-overlay-header',
-        },
-        localizer.format(slotStart, 'dayHeaderFormat')
-      ),
-      events.map(function(event, idx) {
-        return /*#__PURE__*/ React.createElement(EventCell, {
-          key: idx,
-          type: 'popup',
-          event: event,
-          getters: getters,
-          onSelect: onSelect,
-          accessors: accessors,
-          components: components,
-          onDoubleClick: onDoubleClick,
-          onKeyPress: onKeyPress,
-          continuesPrior: lt(accessors.end(event), slotStart, 'day'),
-          continuesAfter: gte(accessors.start(event), slotEnd, 'day'),
-          slotStart: slotStart,
-          slotEnd: slotEnd,
-          selected: isSelected(event, selected),
-          draggable: true,
-          onDragStart: function onDragStart() {
-            return _this.props.handleDragStart(event)
-          },
-          onDragEnd: function onDragEnd() {
-            return _this.props.show()
-          },
-        })
-      })
-    )
-  }
-
-  return Popup
-})(React.Component)
-
-Popup.propTypes =
-  process.env.NODE_ENV !== 'production'
-    ? {
-        position: PropTypes.object,
-        popupOffset: PropTypes.oneOfType([
-          PropTypes.number,
-          PropTypes.shape({
-            x: PropTypes.number,
-            y: PropTypes.number,
-          }),
-        ]),
-        events: PropTypes.array,
-        selected: PropTypes.object,
-        accessors: PropTypes.object.isRequired,
-        components: PropTypes.object.isRequired,
-        getters: PropTypes.object.isRequired,
-        localizer: PropTypes.object.isRequired,
-        onSelect: PropTypes.func,
-        onDoubleClick: PropTypes.func,
-        onKeyPress: PropTypes.func,
-        handleDragStart: PropTypes.func,
-        show: PropTypes.func,
-        slotStart: PropTypes.instanceOf(Date),
-        slotEnd: PropTypes.number,
-        popperRef: PropTypes.oneOfType([
-          PropTypes.func,
-          PropTypes.shape({
-            current: PropTypes.Element,
-          }),
-        ]),
-      }
-    : {}
-/**
- * The Overlay component, of react-overlays, creates a ref that is passed to the Popup, and
- * requires proper ref forwarding to be used without error
- */
-
-var Popup$1 = /*#__PURE__*/ React.forwardRef(function(props, ref) {
-  return /*#__PURE__*/ React.createElement(
-    Popup,
-    _extends(
-      {
-        popperRef: ref,
-      },
-      props
-    )
-  )
-})
 
 function addEventListener(type, handler, target) {
   if (target === void 0) {
@@ -1547,6 +1328,141 @@ BackgroundCells.propTypes =
       }
     : {}
 
+var _excluded = [
+  'style',
+  'className',
+  'event',
+  'selected',
+  'isAllDay',
+  'onSelect',
+  'onDoubleClick',
+  'onKeyPress',
+  'localizer',
+  'continuesPrior',
+  'continuesAfter',
+  'accessors',
+  'getters',
+  'children',
+  'components',
+  'slotStart',
+  'slotEnd',
+]
+
+var EventCell = /*#__PURE__*/ (function(_React$Component) {
+  _inheritsLoose(EventCell, _React$Component)
+
+  function EventCell() {
+    return _React$Component.apply(this, arguments) || this
+  }
+
+  var _proto = EventCell.prototype
+
+  _proto.render = function render() {
+    var _this$props = this.props,
+      style = _this$props.style,
+      className = _this$props.className,
+      event = _this$props.event,
+      selected = _this$props.selected,
+      isAllDay = _this$props.isAllDay,
+      onSelect = _this$props.onSelect,
+      _onDoubleClick = _this$props.onDoubleClick,
+      _onKeyPress = _this$props.onKeyPress,
+      localizer = _this$props.localizer,
+      continuesPrior = _this$props.continuesPrior,
+      continuesAfter = _this$props.continuesAfter,
+      accessors = _this$props.accessors,
+      getters = _this$props.getters,
+      children = _this$props.children,
+      _this$props$component = _this$props.components,
+      Event = _this$props$component.event,
+      EventWrapper = _this$props$component.eventWrapper,
+      slotStart = _this$props.slotStart,
+      slotEnd = _this$props.slotEnd,
+      props = _objectWithoutPropertiesLoose(_this$props, _excluded)
+
+    delete props.resizable
+    var title = accessors.title(event)
+    var tooltip = accessors.tooltip(event)
+    var end = accessors.end(event)
+    var start = accessors.start(event)
+    var allDay = accessors.allDay(event)
+    var showAsAllDay =
+      isAllDay || allDay || diff(start, ceil(end, 'day'), 'day') > 1
+    var userProps = getters.eventProp(event, start, end, selected)
+    var content = /*#__PURE__*/ React.createElement(
+      'div',
+      {
+        className: 'rbc-event-content',
+        title: tooltip || undefined,
+      },
+      Event
+        ? /*#__PURE__*/ React.createElement(Event, {
+            event: event,
+            continuesPrior: continuesPrior,
+            continuesAfter: continuesAfter,
+            title: title,
+            isAllDay: allDay,
+            localizer: localizer,
+            slotStart: slotStart,
+            slotEnd: slotEnd,
+          })
+        : title
+    )
+    return /*#__PURE__*/ React.createElement(
+      EventWrapper,
+      _extends({}, this.props, {
+        type: 'date',
+      }),
+      /*#__PURE__*/ React.createElement(
+        'div',
+        _extends({}, props, {
+          tabIndex: 0,
+          style: _extends({}, userProps.style, style),
+          className: clsx('rbc-event', className, userProps.className, {
+            'rbc-selected': selected,
+            'rbc-event-allday': showAsAllDay,
+            'rbc-event-continues-prior': continuesPrior,
+            'rbc-event-continues-after': continuesAfter,
+          }),
+          onClick: function onClick(e) {
+            return onSelect && onSelect(event, e)
+          },
+          onDoubleClick: function onDoubleClick(e) {
+            return _onDoubleClick && _onDoubleClick(event, e)
+          },
+          onKeyPress: function onKeyPress(e) {
+            return _onKeyPress && _onKeyPress(event, e)
+          },
+        }),
+        typeof children === 'function' ? children(content) : content
+      )
+    )
+  }
+
+  return EventCell
+})(React.Component)
+
+EventCell.propTypes =
+  process.env.NODE_ENV !== 'production'
+    ? {
+        event: PropTypes.object.isRequired,
+        slotStart: PropTypes.instanceOf(Date),
+        slotEnd: PropTypes.instanceOf(Date),
+        resizable: PropTypes.bool,
+        selected: PropTypes.bool,
+        isAllDay: PropTypes.bool,
+        continuesPrior: PropTypes.bool,
+        continuesAfter: PropTypes.bool,
+        accessors: PropTypes.object.isRequired,
+        components: PropTypes.object.isRequired,
+        getters: PropTypes.object.isRequired,
+        localizer: PropTypes.object,
+        onSelect: PropTypes.func,
+        onDoubleClick: PropTypes.func,
+        onKeyPress: PropTypes.func,
+      }
+    : {}
+
 /* eslint-disable react/prop-types */
 
 var EventRowMixin = {
@@ -1738,14 +1654,21 @@ function eventLevels(rowSegments, limit) {
     extra: extra,
   }
 }
-function inRange(e, start, end, accessors) {
-  var eStart = startOf(accessors.start(e), 'day')
-  var eEnd = accessors.end(e)
-  var startsBeforeEnd = lte(eStart, end, 'day') // when the event is zero duration we need to handle a bit differently
+function inRange(e, start, end, accessors, timer) {
+  timer && timer.time('inRange')
+  var startTimestamp = accessors.start(e)
+  var endTimestamp = accessors.end(e)
+  var startsBeforeEnd = startOf(startTimestamp, 'day') <= startOf(end, 'day')
+  var endsAfterStart =
+    startOf(start, 'minutes') <= startOf(endTimestamp, 'minutes') // let eStart = dates.startOf(accessors.start(e), 'day')
+  // let eEnd = accessors.end(e)
+  // let startsBeforeEndOriginal = dates.lte(eStart, end, 'day')
+  // // when the event is zero duration we need to handle a bit differently
+  // let endsAfterStartOriginal = !dates.eq(eStart, eEnd, 'minutes')
+  //   ? dates.gt(eEnd, start, 'minutes')
+  //   : dates.gte(eEnd, start, 'minutes')
 
-  var endsAfterStart = !eq(eStart, eEnd, 'minutes')
-    ? gt(eEnd, start, 'minutes')
-    : gte(eEnd, start, 'minutes')
+  timer && timer.timeEnd('inRange')
   return startsBeforeEnd && endsAfterStart
 }
 function segsOverlap(seg, otherSegs) {
@@ -1756,7 +1679,9 @@ function segsOverlap(seg, otherSegs) {
 function sortEvents(evtA, evtB, accessors) {
   var startSort =
     +startOf(accessors.start(evtA), 'day') -
-    +startOf(accessors.start(evtB), 'day')
+    +startOf(accessors.start(evtB), 'day') // sort by start Day first
+
+  if (startSort) return startSort
   var durA = diff(
     accessors.start(evtA),
     ceil(accessors.end(evtA), 'day'),
@@ -1768,7 +1693,6 @@ function sortEvents(evtA, evtB, accessors) {
     'day'
   )
   return (
-    startSort || // sort by start Day first
     Math.max(durB, 1) - Math.max(durA, 1) || // events spanning multiple days go first
     !!accessors.allDay(evtB) - !!accessors.allDay(evtA) || // then allDay single day events
     +accessors.start(evtA) - +accessors.start(evtB)
@@ -2300,25 +2224,6 @@ DateContentRow.defaultProps = {
   maxRows: Infinity,
 }
 
-var Header = function Header(_ref) {
-  var label = _ref.label
-  return /*#__PURE__*/ React.createElement(
-    'span',
-    {
-      role: 'columnheader',
-      'aria-sort': 'none',
-    },
-    label
-  )
-}
-
-Header.propTypes =
-  process.env.NODE_ENV !== 'production'
-    ? {
-        label: PropTypes.node,
-      }
-    : {}
-
 var DateHeader = function DateHeader(_ref) {
   var label = _ref.label,
     drilldownView = _ref.drilldownView,
@@ -2350,12 +2255,189 @@ DateHeader.propTypes =
       }
     : {}
 
+var Header = function Header(_ref) {
+  var label = _ref.label
+  return /*#__PURE__*/ React.createElement(
+    'span',
+    {
+      role: 'columnheader',
+      'aria-sort': 'none',
+    },
+    label
+  )
+}
+
+Header.propTypes =
+  process.env.NODE_ENV !== 'production'
+    ? {
+        label: PropTypes.node,
+      }
+    : {}
+
+var Popup = /*#__PURE__*/ (function(_React$Component) {
+  _inheritsLoose(Popup, _React$Component)
+
+  function Popup() {
+    return _React$Component.apply(this, arguments) || this
+  }
+
+  var _proto = Popup.prototype
+
+  _proto.componentDidMount = function componentDidMount() {
+    var _this$props = this.props,
+      _this$props$popupOffs = _this$props.popupOffset,
+      popupOffset =
+        _this$props$popupOffs === void 0 ? 5 : _this$props$popupOffs,
+      popperRef = _this$props.popperRef,
+      _getOffset = getOffset(popperRef.current),
+      top = _getOffset.top,
+      left = _getOffset.left,
+      width = _getOffset.width,
+      height = _getOffset.height,
+      viewBottom = window.innerHeight + getScrollTop(window),
+      viewRight = window.innerWidth + getScrollLeft(window),
+      bottom = top + height,
+      right = left + width
+
+    if (bottom > viewBottom || right > viewRight) {
+      var topOffset, leftOffset
+      if (bottom > viewBottom)
+        topOffset = bottom - viewBottom + (popupOffset.y || +popupOffset || 0)
+      if (right > viewRight)
+        leftOffset = right - viewRight + (popupOffset.x || +popupOffset || 0)
+      this.setState({
+        topOffset: topOffset,
+        leftOffset: leftOffset,
+      }) //eslint-disable-line
+    }
+  }
+
+  _proto.render = function render() {
+    var _this = this
+
+    var _this$props2 = this.props,
+      events = _this$props2.events,
+      selected = _this$props2.selected,
+      getters = _this$props2.getters,
+      accessors = _this$props2.accessors,
+      components = _this$props2.components,
+      onSelect = _this$props2.onSelect,
+      onDoubleClick = _this$props2.onDoubleClick,
+      onKeyPress = _this$props2.onKeyPress,
+      slotStart = _this$props2.slotStart,
+      slotEnd = _this$props2.slotEnd,
+      localizer = _this$props2.localizer,
+      popperRef = _this$props2.popperRef
+    var width = this.props.position.width,
+      topOffset = (this.state || {}).topOffset || 0,
+      leftOffset = (this.state || {}).leftOffset || 0
+    var style = {
+      top: -topOffset,
+      left: -leftOffset,
+      minWidth: width + width / 2,
+    }
+    return /*#__PURE__*/ React.createElement(
+      'div',
+      {
+        style: _extends({}, this.props.style, style),
+        className: 'rbc-overlay',
+        ref: popperRef,
+      },
+      /*#__PURE__*/ React.createElement(
+        'div',
+        {
+          className: 'rbc-overlay-header',
+        },
+        localizer.format(slotStart, 'dayHeaderFormat')
+      ),
+      events.map(function(event, idx) {
+        return /*#__PURE__*/ React.createElement(EventCell, {
+          key: idx,
+          type: 'popup',
+          event: event,
+          getters: getters,
+          onSelect: onSelect,
+          accessors: accessors,
+          components: components,
+          onDoubleClick: onDoubleClick,
+          onKeyPress: onKeyPress,
+          continuesPrior: lt(accessors.end(event), slotStart, 'day'),
+          continuesAfter: gte(accessors.start(event), slotEnd, 'day'),
+          slotStart: slotStart,
+          slotEnd: slotEnd,
+          selected: isSelected(event, selected),
+          draggable: true,
+          onDragStart: function onDragStart() {
+            return _this.props.handleDragStart(event)
+          },
+          onDragEnd: function onDragEnd() {
+            return _this.props.show()
+          },
+        })
+      })
+    )
+  }
+
+  return Popup
+})(React.Component)
+
+Popup.propTypes =
+  process.env.NODE_ENV !== 'production'
+    ? {
+        position: PropTypes.object,
+        popupOffset: PropTypes.oneOfType([
+          PropTypes.number,
+          PropTypes.shape({
+            x: PropTypes.number,
+            y: PropTypes.number,
+          }),
+        ]),
+        events: PropTypes.array,
+        selected: PropTypes.object,
+        accessors: PropTypes.object.isRequired,
+        components: PropTypes.object.isRequired,
+        getters: PropTypes.object.isRequired,
+        localizer: PropTypes.object.isRequired,
+        onSelect: PropTypes.func,
+        onDoubleClick: PropTypes.func,
+        onKeyPress: PropTypes.func,
+        handleDragStart: PropTypes.func,
+        show: PropTypes.func,
+        slotStart: PropTypes.instanceOf(Date),
+        slotEnd: PropTypes.number,
+        popperRef: PropTypes.oneOfType([
+          PropTypes.func,
+          PropTypes.shape({
+            current: PropTypes.Element,
+          }),
+        ]),
+      }
+    : {}
+/**
+ * The Overlay component, of react-overlays, creates a ref that is passed to the Popup, and
+ * requires proper ref forwarding to be used without error
+ */
+
+var Popup$1 = /*#__PURE__*/ React.forwardRef(function(props, ref) {
+  return /*#__PURE__*/ React.createElement(
+    Popup,
+    _extends(
+      {
+        popperRef: ref,
+      },
+      props
+    )
+  )
+})
+
 var _excluded$1 = ['date', 'className']
+var timer
 
 var eventsForWeek = function eventsForWeek(evts, start, end, accessors) {
-  return evts.filter(function(e) {
-    return inRange(e, start, end, accessors)
+  var result = evts.filter(function(e) {
+    return inRange(e, start, end, accessors, timer)
   })
+  return result
 }
 
 var MonthView = /*#__PURE__*/ (function(_React$Component) {
@@ -2396,10 +2478,12 @@ var MonthView = /*#__PURE__*/ (function(_React$Component) {
       var _this$state = _this.state,
         needLimitMeasure = _this$state.needLimitMeasure,
         rowLimit = _this$state.rowLimit
+      timer.time('eventsForWeek')
       events = eventsForWeek(events, week[0], week[week.length - 1], accessors)
       events.sort(function(a, b) {
         return sortEvents(a, b, accessors)
       })
+      timer.timeEnd('eventsForWeek')
       return /*#__PURE__*/ React.createElement(DateContentRow, {
         key: weekIdx,
         ref: weekIdx === 0 ? _this.slotRowRef : undefined,
@@ -2568,6 +2652,7 @@ var MonthView = /*#__PURE__*/ (function(_React$Component) {
       rowLimit: 5,
       needLimitMeasure: true,
     }
+    timer = createTimer()
     return _this
   }
 
@@ -2605,10 +2690,22 @@ var MonthView = /*#__PURE__*/ (function(_React$Component) {
   }
 
   _proto.componentDidUpdate = function componentDidUpdate() {
+    console.log('did updated', {
+      inRangeAverage: timer.average('inRange'),
+      inRangeCount: timer.count('inRange'),
+      eventsForWeekAverage: timer.average('eventsForWeek'),
+      eventsForWeekCount: timer.count('eventsForWeek'),
+    })
     if (this.state.needLimitMeasure) this.measureRowLimit(this.props)
   }
 
   _proto.componentWillUnmount = function componentWillUnmount() {
+    console.log('will umount', {
+      inRangeAverage: timer.average('inRange'),
+      inRangeCount: timer.count('inRange'),
+      eventsForWeekAverage: timer.average('eventsForWeek'),
+      eventsForWeekCount: timer.count('eventsForWeek'),
+    })
     window.removeEventListener('resize', this._resizeListener, false)
   }
 
@@ -3424,7 +3521,11 @@ var DayLayoutAlgorithmPropType = PropTypes.oneOfType([
 ])
 
 var getDstOffset = function getDstOffset(start, end) {
-  return start.getTimezoneOffset() - end.getTimezoneOffset()
+  var s = start
+  var e = end
+  if (typeof start === 'number') s = new Date(start)
+  if (typeof end === 'number') e = new Date(end)
+  return s.getTimezoneOffset() - e.getTimezoneOffset()
 }
 
 var getKey = function getKey(min, max, step, slots) {
@@ -4966,7 +5067,7 @@ Week.navigate = function(date, action) {
 Week.range = function(date, _ref) {
   var localizer = _ref.localizer
   var firstOfWeek = localizer.startOfWeek()
-  var start = startOf(date, 'week', firstOfWeek)
+  var start = startOf(date, 'week')
   var end = endOf(date, 'week', firstOfWeek)
   return range(start, end)
 }
