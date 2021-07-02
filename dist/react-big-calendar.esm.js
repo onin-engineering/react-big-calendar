@@ -2856,6 +2856,8 @@ function TimeGridEvent(props) {
     onDoubleClick = props.onDoubleClick,
     isBackgroundEvent = props.isBackgroundEvent,
     onKeyPress = props.onKeyPress,
+    _props$showLabelTop = props.showLabelTop,
+    showLabelTop = _props$showLabelTop === void 0 ? true : _props$showLabelTop,
     _props$components = props.components,
     Event = _props$components.event,
     EventWrapper = _props$components.eventWrapper
@@ -2891,6 +2893,11 @@ function TimeGridEvent(props) {
         : title
     ),
   ]
+
+  if (!showLabelTop) {
+    inner.reverse()
+  }
+
   var eventStyle = isBackgroundEvent
     ? _extends(
         {},
@@ -3609,7 +3616,8 @@ var DayColumn = /*#__PURE__*/ (function(_React$Component) {
         step = _this$props.step,
         timeslots = _this$props.timeslots,
         dayLayoutAlgorithm = _this$props.dayLayoutAlgorithm,
-        resizable = _this$props.resizable
+        resizable = _this$props.resizable,
+        showLabelTop = _this$props.showLabelTop
 
       var _assertThisInitialize = _assertThisInitialized(_this),
         slotMetrics = _assertThisInitialize.slotMetrics
@@ -3668,6 +3676,7 @@ var DayColumn = /*#__PURE__*/ (function(_React$Component) {
             return _this._keyPress(event, e)
           },
           resizable: resizable,
+          showLabelTop: showLabelTop,
         })
       })
     }
@@ -3985,6 +3994,7 @@ var DayColumn = /*#__PURE__*/ (function(_React$Component) {
       resource = _this$props3.resource,
       accessors = _this$props3.accessors,
       localizer = _this$props3.localizer,
+      showLabelTop = _this$props3.showLabelTop,
       _this$props3$getters = _this$props3.getters,
       dayProp = _this$props3$getters.dayProp,
       getters = _objectWithoutPropertiesLoose(
@@ -4048,6 +4058,7 @@ var DayColumn = /*#__PURE__*/ (function(_React$Component) {
           getters: getters,
           components: components,
           slotMetrics: slotMetrics,
+          showLabelTop: showLabelTop,
         },
         /*#__PURE__*/ React.createElement(
           'div',
@@ -4126,6 +4137,7 @@ DayColumn.propTypes =
         dragThroughEvents: PropTypes.bool,
         resource: PropTypes.any,
         dayLayoutAlgorithm: DayLayoutAlgorithmPropType,
+        showLabelTop: PropTypes.bool,
       }
     : {}
 DayColumn.defaultProps = {

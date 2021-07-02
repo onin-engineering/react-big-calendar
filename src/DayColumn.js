@@ -118,6 +118,7 @@ class DayColumn extends React.Component {
       resource,
       accessors,
       localizer,
+      showLabelTop,
       getters: { dayProp, ...getters },
       components: { eventContainerWrapper: EventContainer, ...components },
     } = this.props
@@ -161,6 +162,7 @@ class DayColumn extends React.Component {
           getters={getters}
           components={components}
           slotMetrics={slotMetrics}
+          showLabelTop={showLabelTop}
         >
           <div className={clsx('rbc-events-container', rtl && 'rtl')}>
             {this.renderEvents({
@@ -198,6 +200,7 @@ class DayColumn extends React.Component {
       timeslots,
       dayLayoutAlgorithm,
       resizable,
+      showLabelTop,
     } = this.props
 
     const { slotMetrics } = this
@@ -247,6 +250,7 @@ class DayColumn extends React.Component {
           isBackgroundEvent={isBackgroundEvent}
           onKeyPress={e => this._keyPress(event, e)}
           resizable={resizable}
+          showLabelTop={showLabelTop}
         />
       )
     })
@@ -434,6 +438,7 @@ DayColumn.propTypes = {
   resource: PropTypes.any,
 
   dayLayoutAlgorithm: DayLayoutAlgorithmPropType,
+  showLabelTop: PropTypes.bool,
 }
 
 DayColumn.defaultProps = {

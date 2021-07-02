@@ -708,7 +708,9 @@
     return (
       !!length &&
       (type == 'number' || (type != 'symbol' && reIsUint.test(value))) &&
-      value > -1 && value % 1 == 0 && value < length
+      value > -1 &&
+      value % 1 == 0 &&
+      value < length
     )
   }
 
@@ -2443,7 +2445,8 @@
       // Non `Object` object instances with different constructors are not equal.
       if (
         objCtor != othCtor &&
-        'constructor' in object && 'constructor' in other &&
+        'constructor' in object &&
+        'constructor' in other &&
         !(
           typeof objCtor == 'function' &&
           objCtor instanceof objCtor &&
@@ -10147,14 +10150,12 @@
     var popperInstanceRef = React.useRef()
     var update = React.useCallback(function() {
       var _popperInstanceRef$cu
-
       ;(_popperInstanceRef$cu = popperInstanceRef.current) == null
         ? void 0
         : _popperInstanceRef$cu.update()
     }, [])
     var forceUpdate = React.useCallback(function() {
       var _popperInstanceRef$cu2
-
       ;(_popperInstanceRef$cu2 = popperInstanceRef.current) == null
         ? void 0
         : _popperInstanceRef$cu2.forceUpdate()
@@ -13365,6 +13366,9 @@
       onDoubleClick = props.onDoubleClick,
       isBackgroundEvent = props.isBackgroundEvent,
       onKeyPress = props.onKeyPress,
+      _props$showLabelTop = props.showLabelTop,
+      showLabelTop =
+        _props$showLabelTop === void 0 ? true : _props$showLabelTop,
       _props$components = props.components,
       Event = _props$components.event,
       EventWrapper = _props$components.eventWrapper
@@ -13400,6 +13404,11 @@
           : title
       ),
     ]
+
+    if (!showLabelTop) {
+      inner.reverse()
+    }
+
     var eventStyle = isBackgroundEvent
       ? _extends(
           {},
@@ -14388,7 +14397,8 @@
           step = _this$props.step,
           timeslots = _this$props.timeslots,
           dayLayoutAlgorithm = _this$props.dayLayoutAlgorithm,
-          resizable = _this$props.resizable
+          resizable = _this$props.resizable,
+          showLabelTop = _this$props.showLabelTop
 
         var _assertThisInitialize = _assertThisInitialized(_this),
           slotMetrics = _assertThisInitialize.slotMetrics
@@ -14447,6 +14457,7 @@
               return _this._keyPress(event, e)
             },
             resizable: resizable,
+            showLabelTop: showLabelTop,
           })
         })
       }
@@ -14771,6 +14782,7 @@
         resource = _this$props3.resource,
         accessors = _this$props3.accessors,
         localizer = _this$props3.localizer,
+        showLabelTop = _this$props3.showLabelTop,
         _this$props3$getters = _this$props3.getters,
         dayProp = _this$props3$getters.dayProp,
         getters = _objectWithoutPropertiesLoose(
@@ -14834,6 +14846,7 @@
             getters: getters,
             components: components,
             slotMetrics: slotMetrics,
+            showLabelTop: showLabelTop,
           },
           /*#__PURE__*/ React__default.createElement(
             'div',
@@ -14910,6 +14923,7 @@
     dragThroughEvents: propTypes.bool,
     resource: propTypes.any,
     dayLayoutAlgorithm: DayLayoutAlgorithmPropType,
+    showLabelTop: propTypes.bool,
   }
   DayColumn.defaultProps = {
     dragThroughEvents: true,
