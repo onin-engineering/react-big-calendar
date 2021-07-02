@@ -6926,13 +6926,7 @@
   function startOf(d, unit, firstOfWeek) {
     if (!unit) return d
     var fn = startOfs[unit]
-
-    if (!fn) {
-      console.log('fn not found', unit) // eslint-disable-line
-
-      return d
-    }
-
+    if (!fn) return d
     return fn(d, firstOfWeek)
   }
   function endOf(d, unit, firstOfWeek) {

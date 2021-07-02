@@ -2,22 +2,22 @@
 import * as dates from './date-arithmetic'
 
 export {
-  add,
-  endOf,
-  eq,
-  gt,
-  gte,
-  hours,
-  inRange,
-  lt,
-  lte,
-  max,
   milliseconds,
-  min,
-  minutes,
-  month,
   seconds,
+  minutes,
+  hours,
+  month,
   startOf,
+  endOf,
+  add,
+  eq,
+  gte,
+  gt,
+  lte,
+  lt,
+  inRange,
+  min,
+  max,
 } from './date-arithmetic'
 
 const MILLI = {
@@ -110,9 +110,9 @@ export function isJustDate(date) {
 
 export function duration(start, end, unit, firstOfWeek) {
   if (unit === 'day') unit = 'date'
+  const fn = dates[unit] // eslint-disable-line
   return Math.abs(
-    dates[unit](start, undefined, firstOfWeek) -
-      dates[unit](end, undefined, firstOfWeek)
+    fn(start, undefined, firstOfWeek) - fn(end, undefined, firstOfWeek)
   )
 }
 
