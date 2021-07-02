@@ -125,10 +125,9 @@ const startOfs = {
 
 export function startOf(d, unit, firstOfWeek) {
   if (!unit) return d
-
-  const fn = startOfs[unit]
-  if (!fn) return d
-  return fn(d, firstOfWeek)
+  const startOfUnit = startOfs[unit]
+  if (!startOfUnit) return d
+  return startOfUnit(d, firstOfWeek)
 }
 
 export function endOf(d, unit, firstOfWeek) {

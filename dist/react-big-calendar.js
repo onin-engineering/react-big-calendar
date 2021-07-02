@@ -6925,9 +6925,9 @@
     _startOfs)
   function startOf(d, unit, firstOfWeek) {
     if (!unit) return d
-    var fn = startOfs[unit]
-    if (!fn) return d
-    return fn(d, firstOfWeek)
+    var startOfUnit = startOfs[unit]
+    if (!startOfUnit) return d
+    return startOfUnit(d, firstOfWeek)
   }
   function endOf(d, unit, firstOfWeek) {
     d = new Date(d)
