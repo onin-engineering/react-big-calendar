@@ -4,13 +4,12 @@ import qsa from 'dom-helpers/querySelectorAll'
 import PropTypes from 'prop-types'
 import React from 'react'
 import { findDOMNode } from 'react-dom'
-
-import * as dates from './utils/dates'
 import BackgroundCells from './BackgroundCells'
-import EventRow from './EventRow'
 import EventEndingRow from './EventEndingRow'
+import EventRow from './EventRow'
 import NoopWrapper from './NoopWrapper'
 import ScrollableWeekWrapper from './ScrollableWeekWrapper'
+import * as dates from './utils/dates'
 import * as DateSlotMetrics from './utils/DateSlotMetrics'
 
 class DateContentRow extends React.Component {
@@ -126,6 +125,7 @@ class DateContentRow extends React.Component {
       isAllDay,
       resizable,
       showAllEvents,
+      style,
     } = this.props
 
     if (renderForMeasure) return this.renderDummy()
@@ -153,7 +153,7 @@ class DateContentRow extends React.Component {
     }
 
     return (
-      <div className={className} role="rowgroup">
+      <div className={className} style={style} role="rowgroup">
         <BackgroundCells
           date={date}
           getNow={getNow}

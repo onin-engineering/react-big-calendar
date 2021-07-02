@@ -1,23 +1,19 @@
+import clsx from 'clsx'
+import * as animationFrame from 'dom-helpers/animationFrame'
+import getPosition from 'dom-helpers/position'
+import chunk from 'lodash/chunk'
 import PropTypes from 'prop-types'
 import React from 'react'
 import { findDOMNode } from 'react-dom'
-import clsx from 'clsx'
-
-import * as dates from './utils/dates'
-import chunk from 'lodash/chunk'
-
-import { navigate, views } from './utils/constants'
-import { notify } from './utils/helpers'
-import getPosition from 'dom-helpers/position'
-import * as animationFrame from 'dom-helpers/animationFrame'
-
-import Popup from './Popup'
 import Overlay from 'react-overlays/Overlay'
 import DateContentRow from './DateContentRow'
-import Header from './Header'
 import DateHeader from './DateHeader'
-
+import Header from './Header'
+import Popup from './Popup'
+import { navigate, views } from './utils/constants'
+import * as dates from './utils/dates'
 import { inRange, sortEvents } from './utils/eventLevels'
+import { notify } from './utils/helpers'
 
 let eventsForWeek = (evts, start, end, accessors) =>
   evts.filter(e => inRange(e, start, end, accessors))
@@ -121,6 +117,9 @@ class MonthView extends React.Component {
         ref={weekIdx === 0 ? this.slotRowRef : undefined}
         container={this.getContainer}
         className="rbc-month-row"
+        style={{
+          minHeight: `calc((100% - 35px) * ${1 / this._weekCount})`,
+        }}
         getNow={getNow}
         date={date}
         range={week}
