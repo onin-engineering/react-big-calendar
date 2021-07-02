@@ -13640,6 +13640,9 @@
       onDoubleClick = props.onDoubleClick,
       isBackgroundEvent = props.isBackgroundEvent,
       onKeyPress = props.onKeyPress,
+      _props$showLabelTop = props.showLabelTop,
+      showLabelTop =
+        _props$showLabelTop === void 0 ? true : _props$showLabelTop,
       _props$components = props.components,
       Event = _props$components.event,
       EventWrapper = _props$components.eventWrapper
@@ -13675,6 +13678,11 @@
           : title
       ),
     ]
+
+    if (!showLabelTop) {
+      inner.reverse()
+    }
+
     var eventStyle = isBackgroundEvent
       ? _extends(
           {},
@@ -14663,7 +14671,8 @@
           step = _this$props.step,
           timeslots = _this$props.timeslots,
           dayLayoutAlgorithm = _this$props.dayLayoutAlgorithm,
-          resizable = _this$props.resizable
+          resizable = _this$props.resizable,
+          showLabelTop = _this$props.showLabelTop
 
         var _assertThisInitialize = _assertThisInitialized(_this),
           slotMetrics = _assertThisInitialize.slotMetrics
@@ -14722,6 +14731,7 @@
               return _this._keyPress(event, e)
             },
             resizable: resizable,
+            showLabelTop: showLabelTop,
           })
         })
       }
@@ -15046,6 +15056,7 @@
         resource = _this$props3.resource,
         accessors = _this$props3.accessors,
         localizer = _this$props3.localizer,
+        showLabelTop = _this$props3.showLabelTop,
         _this$props3$getters = _this$props3.getters,
         dayProp = _this$props3$getters.dayProp,
         getters = _objectWithoutPropertiesLoose(
@@ -15109,6 +15120,7 @@
             getters: getters,
             components: components,
             slotMetrics: slotMetrics,
+            showLabelTop: showLabelTop,
           },
           /*#__PURE__*/ React__default.createElement(
             'div',
@@ -15185,6 +15197,7 @@
     dragThroughEvents: propTypes.bool,
     resource: propTypes.any,
     dayLayoutAlgorithm: DayLayoutAlgorithmPropType,
+    showLabelTop: propTypes.bool,
   }
   DayColumn.defaultProps = {
     dragThroughEvents: true,

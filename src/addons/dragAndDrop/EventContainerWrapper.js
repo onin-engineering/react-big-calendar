@@ -1,15 +1,14 @@
 import PropTypes from 'prop-types'
 import React from 'react'
-import * as dates from '../../utils/dates'
-import { DnDContext } from './DnDContext'
-
+import NoopWrapper from '../../NoopWrapper'
 import Selection, {
   getBoundsForNode,
   getEventNodeFromPoint,
 } from '../../Selection'
 import TimeGridEvent from '../../TimeGridEvent'
+import * as dates from '../../utils/dates'
 import { dragAccessors, eventTimes, pointInColumn } from './common'
-import NoopWrapper from '../../NoopWrapper'
+import { DnDContext } from './DnDContext'
 
 class EventContainerWrapper extends React.Component {
   static propTypes = {
@@ -19,6 +18,7 @@ class EventContainerWrapper extends React.Component {
     localizer: PropTypes.object.isRequired,
     slotMetrics: PropTypes.object.isRequired,
     resource: PropTypes.any,
+    showLabelTop: PropTypes.bool,
   }
 
   static contextType = DnDContext
@@ -204,6 +204,7 @@ class EventContainerWrapper extends React.Component {
       getters,
       slotMetrics,
       localizer,
+      showLabelTop,
     } = this.props
 
     let { event, top, height } = this.state
@@ -240,6 +241,7 @@ class EventContainerWrapper extends React.Component {
               accessors={{ ...accessors, ...dragAccessors }}
               continuesEarlier={startsBeforeDay}
               continuesLater={startsAfterDay}
+              showLabelTop={showLabelTop}
             />
           )}
         </React.Fragment>

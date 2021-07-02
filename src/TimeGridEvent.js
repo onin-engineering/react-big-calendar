@@ -22,6 +22,7 @@ function TimeGridEvent(props) {
     onDoubleClick,
     isBackgroundEvent,
     onKeyPress,
+    showLabelTop = true,
     components: { event: Event, eventWrapper: EventWrapper },
   } = props
   let title = accessors.title(event)
@@ -40,6 +41,10 @@ function TimeGridEvent(props) {
       {Event ? <Event event={event} title={title} /> : title}
     </div>,
   ]
+
+  if (!showLabelTop) {
+    inner.reverse()
+  }
 
   const eventStyle = isBackgroundEvent
     ? {
