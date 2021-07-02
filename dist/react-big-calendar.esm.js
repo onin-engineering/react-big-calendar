@@ -384,7 +384,7 @@ function solveDST(currentDate, nextDate) {
   // else the difference is zero
 
   var diffMinutes = nextOffset - currentOffset
-  return new Date(+nextDate + diffMinutes * multiplierMilli['minutes'])
+  return new Date(+nextDate + diffMinutes * multiplierMilli.minutes)
 }
 
 function subtract(d, num, unit) {
