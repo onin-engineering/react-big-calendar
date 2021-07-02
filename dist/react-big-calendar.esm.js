@@ -401,9 +401,9 @@ var startOfs =
     return subtract(d, year(d) % 10, 'year')
   }),
   (_startOfs[YEAR] = startOfYear),
+  (_startOfs[MONTH] = startOfMonth),
   (_startOfs[WEEK] = startOfWeek),
   (_startOfs[DAY] = startOfDay),
-  (_startOfs[MONTH] = startOfMonth),
   (_startOfs[MINUTES] = startOfMinute),
   (_startOfs[SECONDS] = startOfSecond),
   _startOfs)

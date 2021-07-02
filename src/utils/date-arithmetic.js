@@ -99,7 +99,7 @@ function solveDST(currentDate, nextDate) {
   // else the difference is zero
   var diffMinutes = nextOffset - currentOffset
 
-  return new Date(+nextDate + diffMinutes * multiplierMilli['minutes'])
+  return new Date(+nextDate + diffMinutes * multiplierMilli.minutes)
 }
 
 export function subtract(d, num, unit) {
@@ -116,9 +116,9 @@ const startOfs = {
     return subtract(d, year(d) % 10, 'year')
   },
   [YEAR]: startOfYear,
+  [MONTH]: startOfMonth,
   [WEEK]: startOfWeek,
   [DAY]: startOfDay,
-  [MONTH]: startOfMonth,
   [MINUTES]: startOfMinute,
   [SECONDS]: startOfSecond,
 }
