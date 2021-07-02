@@ -411,7 +411,9 @@ function startOf(d, unit, firstOfWeek) {
   if (!unit) return d
   var startOfUnit = startOfs[unit]
   if (!startOfUnit) return d
-  return startOfUnit(d, firstOfWeek)
+  return startOfUnit(d, {
+    weekStartsOn: firstOfWeek,
+  })
 }
 function endOf(d, unit, firstOfWeek) {
   d = new Date(d)

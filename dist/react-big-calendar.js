@@ -708,7 +708,9 @@
     return (
       !!length &&
       (type == 'number' || (type != 'symbol' && reIsUint.test(value))) &&
-      value > -1 && value % 1 == 0 && value < length
+      value > -1 &&
+      value % 1 == 0 &&
+      value < length
     )
   }
 
@@ -2443,7 +2445,8 @@
       // Non `Object` object instances with different constructors are not equal.
       if (
         objCtor != othCtor &&
-        'constructor' in object && 'constructor' in other &&
+        'constructor' in object &&
+        'constructor' in other &&
         !(
           typeof objCtor == 'function' &&
           objCtor instanceof objCtor &&
@@ -9467,14 +9470,12 @@
     var popperInstanceRef = React.useRef()
     var update = React.useCallback(function() {
       var _popperInstanceRef$cu
-
       ;(_popperInstanceRef$cu = popperInstanceRef.current) == null
         ? void 0
         : _popperInstanceRef$cu.update()
     }, [])
     var forceUpdate = React.useCallback(function() {
       var _popperInstanceRef$cu2
-
       ;(_popperInstanceRef$cu2 = popperInstanceRef.current) == null
         ? void 0
         : _popperInstanceRef$cu2.forceUpdate()
@@ -16208,7 +16209,9 @@
     if (!unit) return d
     var startOfUnit = startOfs[unit]
     if (!startOfUnit) return d
-    return startOfUnit(d, firstOfWeek)
+    return startOfUnit(d, {
+      weekStartsOn: firstOfWeek,
+    })
   }
   function endOf(d, unit, firstOfWeek) {
     d = new Date(d)
