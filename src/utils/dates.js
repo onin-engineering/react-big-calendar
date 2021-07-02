@@ -1,5 +1,5 @@
 /* eslint no-fallthrough: off */
-import * as dates from 'date-arithmetic'
+import * as dates from './date-arithmetic'
 
 export {
   milliseconds,
@@ -18,7 +18,7 @@ export {
   inRange,
   min,
   max,
-} from 'date-arithmetic'
+} from './date-arithmetic'
 
 const MILLI = {
   seconds: 1000,
@@ -110,9 +110,9 @@ export function isJustDate(date) {
 
 export function duration(start, end, unit, firstOfWeek) {
   if (unit === 'day') unit = 'date'
+  const fn = dates[unit] // eslint-disable-line
   return Math.abs(
-    dates[unit](start, undefined, firstOfWeek) -
-      dates[unit](end, undefined, firstOfWeek)
+    fn(start, undefined, firstOfWeek) - fn(end, undefined, firstOfWeek)
   )
 }
 
