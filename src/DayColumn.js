@@ -120,7 +120,11 @@ class DayColumn extends React.Component {
       localizer,
       showLabelTop,
       getters: { dayProp, ...getters },
-      components: { eventContainerWrapper: EventContainer, ...components },
+      components: {
+        eventContainerWrapper: EventContainer,
+        currentTimeIndicator: CurrentTimeIndicator,
+        ...components
+      },
     } = this.props
 
     let { slotMetrics } = this
@@ -182,7 +186,9 @@ class DayColumn extends React.Component {
           <div
             className="rbc-current-time-indicator"
             style={{ top: `${this.state.timeIndicatorPosition}%` }}
-          />
+          >
+            <CurrentTimeIndicator />
+          </div>
         )}
       </DayColumnWrapperComponent>
     )

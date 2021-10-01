@@ -134,7 +134,12 @@ class TimeGridHeader extends React.Component {
         </div>
 
         {resources.map(([id, resource], idx) => (
-          <div className="rbc-time-header-content" key={id || idx}>
+          <div
+            className={`rbc-time-header-content${
+              range.length <= 1 ? ' day' : ''
+            }`}
+            key={id || idx}
+          >
             {resource && (
               <div className="rbc-row rbc-row-resource" key={`resource_${idx}`}>
                 <div className="rbc-header">

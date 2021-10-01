@@ -3795,7 +3795,7 @@ function getSlotMetrics$1(_ref) {
 }
 
 var _excluded$2 = ['dayProp'],
-  _excluded2 = ['eventContainerWrapper']
+  _excluded2 = ['eventContainerWrapper', 'currentTimeIndicator']
 
 var DayColumn = /*#__PURE__*/ (function(_React$Component) {
   _inheritsLoose(DayColumn, _React$Component)
@@ -4220,6 +4220,7 @@ var DayColumn = /*#__PURE__*/ (function(_React$Component) {
       ),
       _this$props3$componen = _this$props3.components,
       EventContainer = _this$props3$componen.eventContainerWrapper,
+      CurrentTimeIndicator = _this$props3$componen.currentTimeIndicator,
       components = _objectWithoutPropertiesLoose(
         _this$props3$componen,
         _excluded2
@@ -4309,12 +4310,16 @@ var DayColumn = /*#__PURE__*/ (function(_React$Component) {
         ),
       isNow &&
         this.intervalTriggered &&
-        /*#__PURE__*/ React.createElement('div', {
-          className: 'rbc-current-time-indicator',
-          style: {
-            top: this.state.timeIndicatorPosition + '%',
+        /*#__PURE__*/ React.createElement(
+          'div',
+          {
+            className: 'rbc-current-time-indicator',
+            style: {
+              top: this.state.timeIndicatorPosition + '%',
+            },
           },
-        })
+          /*#__PURE__*/ React.createElement(CurrentTimeIndicator, null)
+        )
     )
   }
 
@@ -4543,7 +4548,8 @@ var TimeGridHeader = /*#__PURE__*/ (function(_React$Component) {
         return /*#__PURE__*/ React.createElement(
           'div',
           {
-            className: 'rbc-time-header-content',
+            className:
+              'rbc-time-header-content' + (range.length <= 1 ? ' day' : ''),
             key: id || idx,
           },
           resource &&
