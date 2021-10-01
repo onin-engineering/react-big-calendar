@@ -732,6 +732,7 @@ class Calendar extends React.Component {
       timeSlotWrapper: PropTypes.elementType,
       timeGutterHeader: PropTypes.elementType,
       resourceHeader: PropTypes.elementType,
+      currentTimeIndicator: PropTypes.elementType,
 
       toolbar: PropTypes.elementType,
 
